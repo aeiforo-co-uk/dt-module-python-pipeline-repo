@@ -6,11 +6,11 @@ on:
       repo_name:
         description: 'Repository Name'
         required: true
-        default: 'your-repo-name'
+        default: 'dt-module-python-pipeline-repo'
       deploy_env:
         description: 'Deployment Environment'
         required: true
-        default: 'staging'
+        default: 'deployment'
       build_artifacts:
         description: 'Build Artifacts (true/false)'
         required: true
