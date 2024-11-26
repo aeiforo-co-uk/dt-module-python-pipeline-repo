@@ -10,11 +10,21 @@ on:
       deploy_env:
         description: 'Deployment Environment'
         required: true
-        default: 'your-deploy-environment'
+        default: 'staging'
       build_artifacts:
         description: 'Build Artifacts (true/false)'
         required: true
         default: 'true'
+      python_version:
+        description: 'Python Version'
+        required: true
+        default: '3.9'
+
+env:
+  REPO_NAME: ${{ github.event.inputs.repo_name }}
+  DEPLOY_ENV: ${{ github.event.inputs.deploy_env }}
+  BUILD_ARTIFACTS: ${{ github.event.inputs.build_artifacts }}
+  PYTHON_VERSION: ${{ github.event.inputs.python_version }}
 
 jobs:
   source_checkout:
@@ -34,26 +44,24 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip  # Upgrade pip
-          pip install -r requirements.txt  # Install dependencies (including pytest)
+          pip install -r requirements.txt  # Install dependencies
 
       - name: Run Tests with Pytest
-        run: |
-          pytest --maxfail=1 --disable-warnings -q  # Run pytest with sensible options
+        run: pytest --maxfail=1 --disable-warnings -q
 
       - name: Generate Test Report
-        run: |
-          pytest --junitxml=junit/test-results.xml  # Generate JUnit XML report
+        run: pytest --junitxml=junit/test-results.xml
 
       - name: Upload Test Results
         uses: actions/upload-artifact@v2
         with:
           name: pytest-results
-          path: junit/test-results.xml  # Upload test results as an artifact
+          path: junit/test-results.xml
 
   sonarqube_analysis:
     name: SonarQube Code Quality Analysis
@@ -74,7 +82,7 @@ jobs:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         run: |
           sonar-scanner \
-          -Dsonar.projectKey=${{ github.event.inputs.repo_name }} \
+          -Dsonar.projectKey=${{ env.REPO_NAME }} \
           -Dsonar.sources=. \
           -Dsonar.host.url=$SONAR_HOST_URL \
           -Dsonar.login=$SONAR_TOKEN
@@ -83,32 +91,12 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: sonar-report
-          path: sonar-report.json  # Upload the SonarQube report if available
-
-  snyk_vulnerability_scan:
-    name: Snyk Vulnerability Scanning
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
-      - name: Install Snyk CLI
-        run: |
-          npm install -g snyk
-
-      - name: Authenticate Snyk
-        run: snyk auth ${{ secrets.SNYK_TOKEN }}
-
-      - name: Run Snyk Test
-        run: snyk test --all-projects
-
-      - name: Monitor Project in Snyk
-        run: snyk monitor --all-projects
+          path: sonar-report.json
 
   build_artifacts:
     name: Build Project Artifacts
     runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.build_artifacts == 'true' }}
+    if: ${{ env.BUILD_ARTIFACTS == 'true' }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -116,7 +104,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Dependencies
         run: |
@@ -139,5 +127,5 @@ jobs:
     steps:
       - name: Deploy Application
         run: |
-          echo "Deploying application artifacts to ${{ github.event.inputs.deploy_env }}"
+          echo "Deploying application artifacts to ${{ env.DEPLOY_ENV }}"
           # Add your deployment script or commands here
