@@ -17,8 +17,11 @@ on:
       python_version:
         description: 'Python Version'
         required: true
+<<<<<<< HEAD
 
 # Environment Variables
+=======
+>>>>>>> 957cf41359236a37b73d92d9bbda6b5dc55ff8ea
 
 env:
   REPO_NAME: ${{ github.event.inputs.repo_name }}
@@ -127,8 +130,11 @@ jobs:
           name: build-artifacts-${{ env.VERSION }}
           path: dist/
 
+<<<<<<< HEAD
 # Building Container Images
 
+=======
+>>>>>>> 957cf41359236a37b73d92d9bbda6b5dc55ff8ea
   build_container_image:
     name: Build Container Image
     runs-on: ubuntu-latest
@@ -151,8 +157,11 @@ jobs:
         run: |
           docker push ${{ secrets.DOCKER_USERNAME }}/${{ env.REPO_NAME }}:${{ env.VERSION }}
 
+<<<<<<< HEAD
 # Generating Swagger
 
+=======
+>>>>>>> 957cf41359236a37b73d92d9bbda6b5dc55ff8ea
   swagger_generate:
     name: Generate Swagger Documentation
     runs-on: ubuntu-latest
@@ -175,8 +184,11 @@ jobs:
           name: swagger-docs-${{ env.VERSION }}
           path: swagger/
 
+<<<<<<< HEAD
 # Deployment
 
+=======
+>>>>>>> 957cf41359236a37b73d92d9bbda6b5dc55ff8ea
   deploy:
     name: Deploy to Environment
     runs-on: ubuntu-latest
@@ -185,4 +197,8 @@ jobs:
       - name: Deploy Application
         run: |
           echo "Deploying application version ${{ env.VERSION }} to ${{ env.DEPLOY_ENV }}"
+<<<<<<< HEAD
           # Add your deployment script or commands here
+=======
+          
+>>>>>>> 957cf41359236a37b73d92d9bbda6b5dc55ff8ea
