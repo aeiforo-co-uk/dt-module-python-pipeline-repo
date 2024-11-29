@@ -1,25 +1,28 @@
+name: Python CI/CD Pipeline Template
+
 on:
-  workflow_dispatch:
+  workflow_call:  # Makes the workflow reusable
     inputs:
       repo_name:
-        description: 'Repository Name'
         required: true
+        type: string
       deploy_env:
-        description: 'Deployment Environment'
         required: true
+        type: string
       build_artifacts:
-        description: 'Build Artifacts (true/false)'
         required: true
+        type: boolean
       python_version:
-        description: 'Python Version'
         required: true
+        type: string
 
+# Environment Variables
 env:
-  REPO_NAME: ${{ github.event.inputs.repo_name }}
-  DEPLOY_ENV: ${{ github.event.inputs.deploy_env }}
-  BUILD_ARTIFACTS: ${{ github.event.inputs.build_artifacts }}
-  PYTHON_VERSION: ${{ github.event.inputs.python_version }}
-  VERSION: ${{ github.sha }}
+  REPO_NAME: ${{ inputs.repo_name }}
+  DEPLOY_ENV: ${{ inputs.deploy_env }}
+  BUILD_ARTIFACTS: ${{ inputs.build_artifacts }}
+  PYTHON_VERSION: ${{ inputs.python_version }}
+  VERSION: ${{ github.sha }}  # Use Git commit SHA for versioning
 
 jobs:
   source_checkout:
@@ -29,9 +32,8 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-# Unit Test Job
-  unit_tests:
-    name: Run Unit Tests
+  run_tests:
+    name: Run Tests with Pytest
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -46,72 +48,39 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-      - name: Run Unit Tests
-        run: |
-          python -m unittest discover -s tests -p '*_test.py' -v
-      - name: Upload Unit Test Results
-        uses: actions/upload-artifact@v3
-        with:
-          name: unittest-results-${{ env.VERSION }}
-          path: junit/unittest-results.xml
 
-# Pytest Job
-  pytest_tests:
-    name: Run Pytest Tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+      - name: Run Tests with Pytest
+        run: pytest --maxfail=1 --disable-warnings -q
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Generate Test Report
+        run: pytest --junitxml=junit/test-results.xml
 
-      - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-      - name: Run Pytest
-        run: |
-          pytest --maxfail=1 --disable-warnings -v
-      - name: Upload Pytest Results
-        uses: actions/upload-artifact@v3
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v2
         with:
           name: pytest-results-${{ env.VERSION }}
-          path: junit/unittest-results.xml
+          path: junit/test-results.xml
 
-# SonarQube Job
-  sonar_analysis:
-    name: SonarQube Analysis
+  sonarqube_analysis:
+    name: SonarQube Code Quality Analysis
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: SonarQube Scanner
-        env:
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      - name: Install SonarQube Scanner
         run: |
-          # Install SonarQube Scanner
-          curl -sSLo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
+          curl -sSL https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip -o sonar-scanner.zip
           unzip sonar-scanner.zip -d $HOME
-          export PATH="$HOME/sonar-scanner-4.8.0.2856-linux/bin:$PATH"
-          
-          # Run SonarQube analysis
-          sonar-scanner \
-            -Dsonar.projectKey=${{ secrets.PROJECT_KEY }} \
-            -Dsonar.sources=. \
-            -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
-            -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
-            -Dsonar.coverage.exclusions="**/tests/**" \
-            -Dsonar.qualitygate.wait=true || true
-      - name: Check Quality Gate Status
+          echo "export PATH=$HOME/sonar-scanner-4.8.0.2856-linux/bin:\$PATH" >> $GITHUB_ENV
+
+      - name: Run SonarQube Scan
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         run: |
-          if grep -q "QUALITY GATE STATUS: FAILED" logs/sonar.log; then
-            echo "Quality Gate Failed. Investigate on SonarQube Dashboard."
-            exit 1
-          else
-            echo "Quality Gate Passed!"
-          fi
+          sonar-scanner \
+          -Dsonar.projectKey=${{ env.REPO_NAME }} \
+          -Dsonar.sources=. \
+          -Dsonar.host.url=$SONAR_HOST_URL \
+          -Dsonar.login=$SONAR_TOKEN
