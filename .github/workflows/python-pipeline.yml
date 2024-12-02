@@ -21,11 +21,11 @@ on:
         type: string
 
 env:
-  REPO_NAME: ${{ inputs.repo_name }} # Updated to use 'inputs'
+  REPO_NAME: ${{ inputs.repo_name }}
   DEPLOY_ENV: ${{ inputs.deploy_env }}
   BUILD_ARTIFACTS: ${{ inputs.build_artifacts }}
   PYTHON_VERSION: ${{ inputs.python_version }}
-  VERSION: ${{ github.sha }} # Use the Git commit SHA for versioning
+  VERSION: ${{ github.sha }}
 
 jobs:
   source_checkout:
@@ -55,9 +55,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+
       - name: Run Unit Tests
         run: |
           python -m unittest discover -s tests -p '*_test.py' -v
+
       - name: Upload Unit Test Results
         uses: actions/upload-artifact@v3
         with:
@@ -82,9 +84,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+
       - name: Run Pytest
         run: |
           pytest --maxfail=1 --disable-warnings -v
+
       - name: Upload Pytest Results
         uses: actions/upload-artifact@v3
         with:
@@ -116,6 +120,7 @@ jobs:
             -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
             -Dsonar.coverage.exclusions="**/tests/**" \
             -Dsonar.qualitygate.wait=true || true
+
       - name: Check Quality Gate Status
         run: |
           if grep -q "QUALITY GATE STATUS: FAILED" logs/sonar.log; then
@@ -123,4 +128,52 @@ jobs:
             exit 1
           else
             echo "Quality Gate Passed!"
-          fi
+
+  build_and_publish:
+    name: Build and Publish Python Package to AWS CodeArtifact
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set Up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Build Tools
+        run: |
+          pip install setuptools wheel twine
+
+      - name: Build Python Package
+        run: |
+          python setup.py sdist bdist_wheel
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Login to AWS CodeArtifact
+        run: |
+          aws codeartifact login \
+            --tool twine \
+            --repository pypi-store \
+            --domain ak \
+            --domain-owner 897729129103
+
+      - name: Check for Existing Package Versions
+        run: |
+          aws codeartifact list-packages --domain ak --repository pypi-store --format pypi
+
+      - name: Publish Package
+        run: |
+          twine upload --repository codeartifact --verbose dist/*
+
+      - name: Upload Package Artifact to GitHub
+        uses: actions/upload-artifact@v3
+        with:
+          name: calculator-package
+          path: dist/*
