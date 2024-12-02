@@ -115,16 +115,8 @@ jobs:
             -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
             -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
             -Dsonar.coverage.exclusions="**/tests/**" \
-            -Dsonar.qualitygate.wait=true || true
-      - name: Check Quality Gate Status
-        run: |
-          if grep -q "QUALITY GATE STATUS: FAILED" logs/sonar.log; then
-            echo "Quality Gate Failed. Investigate on SonarQube Dashboard."
-            exit 1
-          else
-            echo "Quality Gate Passed!"
-          fi
-        shell: bash
+            -Dsonar.qualitygate.wait=true 
+      
 
   build_and_publish_package:
     name: Build and Publish Python Package to AWS CodeArtifact
