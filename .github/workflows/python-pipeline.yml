@@ -1,13 +1,12 @@
-
 name: Python CI/CD Pipeline with Strong Typing
 
 on:
-  workflow_dispatch:
+  workflow_call:
     inputs:
       repo_name:
         description: 'Repository Name'
         required: true
-        type: string # Define the input type as string
+        type: string
       deploy_env:
         description: 'Deployment Environment'
         required: true
@@ -22,10 +21,10 @@ on:
         type: string
 
 env:
-  REPO_NAME: ${{ github.event.inputs.repo_name }} # Input repository name
-  DEPLOY_ENV: ${{ github.event.inputs.deploy_env }}
-  BUILD_ARTIFACTS: ${{ github.event.inputs.build_artifacts }}
-  PYTHON_VERSION: ${{ github.event.inputs.python_version }}
+  REPO_NAME: ${{ inputs.repo_name }} # Updated to use 'inputs'
+  DEPLOY_ENV: ${{ inputs.deploy_env }}
+  BUILD_ARTIFACTS: ${{ inputs.build_artifacts }}
+  PYTHON_VERSION: ${{ inputs.python_version }}
   VERSION: ${{ github.sha }} # Use the Git commit SHA for versioning
 
 jobs:
@@ -36,9 +35,8 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
         with:
-          repository: ${{ env.REPO_NAME }} # Use the input repository name
+          repository: ${{ env.REPO_NAME }}
 
-# Unit Test Job
   unit_tests:
     name: Run Unit Tests
     runs-on: ubuntu-latest
@@ -66,7 +64,6 @@ jobs:
           name: unittest-results-${{ env.VERSION }}
           path: junit/unittest-results.xml
 
-# Pytest Job
   pytest_tests:
     name: Run Pytest Tests
     runs-on: ubuntu-latest
@@ -94,7 +91,6 @@ jobs:
           name: pytest-results-${{ env.VERSION }}
           path: junit/unittest-results.xml
 
-# SonarQube Job
   sonar_analysis:
     name: SonarQube Analysis
     runs-on: ubuntu-latest
@@ -109,12 +105,10 @@ jobs:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
-          # Install SonarQube Scanner
           curl -sSLo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
           unzip sonar-scanner.zip -d $HOME
           export PATH="$HOME/sonar-scanner-4.8.0.2856-linux/bin:$PATH"
-          
-          # Run SonarQube analysis
+
           sonar-scanner \
             -Dsonar.projectKey=${{ secrets.PROJECT_KEY }} \
             -Dsonar.sources=. \
