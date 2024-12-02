@@ -160,8 +160,8 @@ jobs:
           aws codeartifact login \
             --tool twine \
             --repository pypi-store \
-            --domain ak \
-            --domain-owner 897729129103
+            --domain aeiforo \
+            --domain-owner 061039767866
 
       - name: Publish Package
         run: |
