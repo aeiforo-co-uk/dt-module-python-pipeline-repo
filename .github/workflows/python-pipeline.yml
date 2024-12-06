@@ -1,4 +1,4 @@
-name: Python CI/CD Pipeline 
+name: Python CI/CD Pipeline
 
 on:
   workflow_call:
@@ -55,18 +55,21 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+
       - name: Run Unit Tests
         run: |
           python -m unittest discover -s tests -p '*_test.py' -v
+
       - name: Upload Unit Test Results
         uses: actions/upload-artifact@v3
         with:
           name: unittest-results-${{ env.VERSION }}
           path: junit/unittest-results.xml
 
-  pytest_tests:
-    name: Run Pytest Tests
+  generate_swagger:
+    name: Generate Swagger Documentation
     runs-on: ubuntu-latest
+    needs: source_checkout
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -82,9 +85,64 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+
+      - name: Generate Swagger Documentation
+        run: |
+          nohup uvicorn app:app --host 0.0.0.0 --port 8000 &
+          sleep 5
+          curl http://127.0.0.1:8000/openapi.json > swagger.json
+          curl http://127.0.0.1:8000/docs > swagger.html
+      - name: Upload Swagger Files
+        uses: actions/upload-artifact@v3
+        with:
+          name: swagger-files
+          path: |
+            swagger.json
+            swagger.html
+
+  deploy_swagger:
+    name: Deploy Swagger to EC2
+    runs-on: ubuntu-latest
+    needs: generate_swagger
+    steps:
+      - name: Download Swagger Files
+        uses: actions/download-artifact@v3
+        with:
+          name: swagger-files
+          path: ./swagger
+
+      - name: Deploy Swagger to EC2
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          EC2_KEY: ${{ secrets.EC2_KEY }}
+        run: |
+          scp -i $EC2_KEY ./swagger/swagger.json ./swagger/swagger.html $EC2_USER@$EC2_HOST:/var/www/html/
+
+  pytest_tests:
+    name: Run Pytest Tests
+    runs-on: ubuntu-latest
+    needs: unit_tests
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ env.REPO_NAME }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
       - name: Run Pytest
         run: |
           pytest --maxfail=1 --disable-warnings -v
+
       - name: Upload Pytest Results
         uses: actions/upload-artifact@v3
         with:
@@ -115,77 +173,4 @@ jobs:
             -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
             -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
             -Dsonar.coverage.exclusions="**/tests/**" \
-            -Dsonar.qualitygate.wait=true 
-      
-
-  build_and_publish_package:
-    name: Build and Publish Python Package to AWS CodeArtifact
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
-      - name: Set Up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-
-      - name: Install Build Tools
-        run: |
-          python -m pip install --upgrade pip
-          pip install setuptools wheel twine
-
-      - name: Build Python Package
-        run: |
-          python setup.py sdist bdist_wheel
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-
-      - name: Login to AWS CodeArtifact
-        run: |
-          aws codeartifact login \
-            --tool twine \
-            --repository pypi-store \
-            --domain aeiforo \
-            --domain-owner 061039767866
-
-      - name: Publish Package
-        run: |
-          twine upload --repository codeartifact --verbose dist/*
-
-      - name: Upload Package Artifact to GitHub
-        uses: actions/upload-artifact@v4
-        with:
-          name: calculator-package
-          path: dist/*
-
-  generate_swagger:
-    name: Generate Swagger Documentation
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Start FastAPI App and Generate Swagger
-        run: |
-          nohup uvicorn app:app --host 0.0.0.0 --port 8000 &
-          sleep 5  # Wait for the server to start
-          curl http://127.0.0.1:8000/openapi.json > swagger.json
-          curl http://127.0.0.1:8000/docs > swagger.html
-         
+            -Dsonar.qualitygate.wait=true
