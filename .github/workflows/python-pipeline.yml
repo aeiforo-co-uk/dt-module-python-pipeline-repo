@@ -177,6 +177,8 @@ jobs:
         run: |
           echo "$EC2_KEY" > sandbox.pem
           chmod 600 sandbox.pem
+          eval $(ssh-agent -s)
+          ssh-add sandbox.pem
 
       - name: Deploy Swagger Files
         run: |
