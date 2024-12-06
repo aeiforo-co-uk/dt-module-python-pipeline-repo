@@ -175,12 +175,12 @@ jobs:
 
       - name: Set up SSH key
         run: |
-          echo "$EC2_KEY" > private_key.pem
-          chmod 600 private_key.pem
+          echo "$EC2_KEY" > sandbox.pem
+          chmod 600 sandbox.pem
 
       - name: Deploy Swagger Files
         run: |
-          scp -i private_key.pem -o StrictHostKeyChecking=no ./swagger/swagger.json ./swagger/swagger.html $EC2_USER@$EC2_HOST:/var/www/html/
+          scp -i sandbox.pem -o StrictHostKeyChecking=no ./swagger/swagger.json ./swagger/swagger.html $EC2_USER@$EC2_HOST:/var/www/html/
         env:
           EC2_USER: ${{ secrets.EC2_USER }}
           EC2_HOST: ${{ secrets.EC2_HOST }}
