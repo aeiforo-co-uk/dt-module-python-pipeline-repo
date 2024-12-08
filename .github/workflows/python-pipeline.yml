@@ -120,7 +120,6 @@ jobs:
   build_and_publish_package:
     name: Build and Publish Python Package to AWS CodeArtifact
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -164,26 +163,47 @@ jobs:
           name: calculator-package
           path: dist/*
 
-  deploy_swagger_files:
-    name: Deploy Swagger Files to EC2
+  deploy_swagger:
+    name: Deploy Swagger to EC2
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
-        with:
-          repository: ${{ env.REPO_NAME }}
 
-      - name: Set up SSH key
+      - name: Generate Swagger Documentation
         run: |
-          echo "$EC2_KEY" > sandbox.pem
-          chmod 600 sandbox.pem
-          eval $(ssh-agent -s)
-          ssh-add sandbox.pem
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          python -m my_application.generate_swagger # Replace with your Swagger generation script
 
-      - name: Deploy Swagger Files
+      - name: Archive Swagger Files
         run: |
-          scp -i sandbox.pem -o StrictHostKeyChecking=no ./swagger/swagger.json ./swagger/swagger.html $EC2_USER@$EC2_HOST:/var/www/html/
+          tar -czvf swagger.tar.gz swagger/
+
+      - name: Upload Swagger Files to EC2
         env:
-          EC2_USER: ${{ secrets.EC2_USER }}
           EC2_HOST: ${{ secrets.EC2_HOST }}
-          EC2_KEY: ${{ secrets.EC2_KEY }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          echo "${SSH_PRIVATE_KEY}" > key.pem
+          chmod 600 key.pem
+          scp -i key.pem swagger.tar.gz $EC2_USER@$EC2_HOST:/home/$EC2_USER/swagger.tar.gz
+
+      - name: Deploy Swagger on EC2
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          ssh -i key.pem $EC2_USER@$EC2_HOST <<EOF
+          mkdir -p /var/www/swagger
+          tar -xzvf /home/$EC2_USER/swagger.tar.gz -C /var/www/swagger
+          sudo systemctl restart nginx # Replace with your web server if not nginx
+          EOF
+
+      - name: Verify Swagger Deployment
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          curl -I http://$EC2_HOST/swagger/index.html
