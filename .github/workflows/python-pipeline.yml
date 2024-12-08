@@ -112,6 +112,7 @@ jobs:
           curl -sSLo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
           unzip sonar-scanner.zip -d $HOME
           export PATH="$HOME/sonar-scanner-4.8.0.2856-linux/bin:$PATH"
+
           sonar-scanner \
             -Dsonar.projectKey=${{ secrets.PROJECT_KEY }} \
             -Dsonar.sources=. \
@@ -173,15 +174,15 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Install Swagger Generation Dependencies
+      - name: Install Dependencies for Swagger Generation
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install flasgger  # Install flasgger for Swagger generation
+          pip install flasgger  # Ensure that flasgger is installed for Swagger documentation generation
 
       - name: Generate Swagger Documentation
         run: |
-          python -m my_application.generate_swagger  # Replace with your Swagger generation script
+          python scripts/generate_swagger.py  # Correct path to your Swagger generation script
 
       - name: Archive Swagger Files
         run: |
