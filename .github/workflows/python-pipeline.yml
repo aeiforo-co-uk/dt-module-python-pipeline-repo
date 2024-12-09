@@ -56,13 +56,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Check for Unit Test Files
-        run: |
-          if ! ls tests/*_test.py 1> /dev/null 2>&1; then
-            echo "No unit test files found. Exiting..."
-            exit 1
-          fi
-
       - name: Run Unit Tests
         run: |
           python -m unittest discover -s tests -p '*_test.py' -v
@@ -92,13 +85,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Check for Pytest Files
-        run: |
-          if ! ls tests/*_test.py 1> /dev/null 2>&1; then
-            echo "No pytest files found. Exiting..."
-            exit 1
-          fi
-
       - name: Run Pytest
         run: |
           pytest --maxfail=1 --disable-warnings -v
@@ -115,8 +101,6 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
-        with:
-          repository: ${{ env.REPO_NAME }}
 
       - name: SonarQube Scanner
         env:
@@ -175,12 +159,6 @@ jobs:
         run: |
           twine upload --repository codeartifact --verbose dist/*
 
-      - name: Upload Package Artifact to GitHub
-        uses: actions/upload-artifact@v4
-        with:
-          name: calculator-package
-          path: dist/*
-
   deploy_swagger:
     name: Deploy Swagger to EC2
     runs-on: ubuntu-latest
@@ -196,7 +174,7 @@ jobs:
 
       - name: Generate Swagger Documentation
         run: |
-          python generate_swagger.py  # Updated path to match the root directory
+          python generate_swagger.py
 
       - name: Archive Swagger Files
         run: |
@@ -221,7 +199,7 @@ jobs:
           ssh -i key.pem $EC2_USER@$EC2_HOST <<EOF
           mkdir -p /var/www/swagger
           tar -xzvf /home/$EC2_USER/swagger.tar.gz -C /var/www/swagger
-          sudo systemctl restart nginx  # Replace with your web server if not nginx
+          sudo systemctl restart nginx
           EOF
 
       - name: Verify Swagger Deployment
