@@ -196,7 +196,7 @@ jobs:
 
       - name: Generate Swagger Documentation
         run: |
-          python scripts/generate_swagger.py  # Correct path to your Swagger generation script
+          python generate_swagger.py  # Updated path to match the root directory
 
       - name: Archive Swagger Files
         run: |
