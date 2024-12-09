@@ -191,7 +191,7 @@ jobs:
         run: |
           echo "${SSH_PRIVATE_KEY}" > key.pem
           chmod 600 key.pem
-          # Disable host key checking temporarily
+          mkdir -p ~/.ssh
           ssh-keyscan -H $EC2_HOST >> ~/.ssh/known_hosts
           scp -i key.pem swagger.tar.gz $EC2_USER@$EC2_HOST:/home/$EC2_USER/swagger.tar.gz
 
