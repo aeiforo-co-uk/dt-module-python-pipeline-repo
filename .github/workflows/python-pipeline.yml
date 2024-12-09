@@ -133,7 +133,7 @@ jobs:
             -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
             -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
             -Dsonar.coverage.exclusions="**/tests/**" \
-            -Dsonar.qualitygate.wait=true
+            -Dsonar.qualitygate.wait=true 
 
   build_and_publish_package:
     name: Build and Publish Python Package to AWS CodeArtifact
