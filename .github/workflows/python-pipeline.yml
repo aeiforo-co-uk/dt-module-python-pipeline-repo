@@ -202,8 +202,8 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         run: |
           ssh -i key.pem $EC2_USER@$EC2_HOST <<EOF
-          mkdir -p /var/www/swagger
-          tar -xzvf /home/$EC2_USER/swagger.tar.gz -C /var/www/swagger
+          mkdir -p newdoc/swagger
+          tar -xzvf /home/$EC2_USER/swagger.tar.gz -C newdoc/swagger
           EOF
 
       - name: Verify Swagger Deployment
