@@ -28,7 +28,6 @@ env:
   VERSION: ${{ github.sha }}
 
 jobs:
-  # Step 1: Source Checkout
   source_checkout:
     name: Source Checkout
     runs-on: ubuntu-latest
@@ -38,7 +37,6 @@ jobs:
         with:
           repository: ${{ env.REPO_NAME }}
 
-  # Step 2: Run Unit Tests
   unit_tests:
     name: Run Unit Tests
     runs-on: ubuntu-latest
@@ -68,7 +66,6 @@ jobs:
           name: unittest-results-${{ env.VERSION }}
           path: junit/unittest-results.xml
 
-  # Step 3: Run Pytest Tests
   pytest_tests:
     name: Run Pytest Tests
     runs-on: ubuntu-latest
@@ -96,9 +93,8 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: pytest-results-${{ env.VERSION }}
-          path: junit/pytest-results.xml
+          path: junit/unittest-results.xml
 
-  # Step 4: SonarQube Analysis
   sonar_analysis:
     name: SonarQube Analysis
     runs-on: ubuntu-latest
@@ -125,7 +121,6 @@ jobs:
             -Dsonar.coverage.exclusions="**/tests/**" \
             -Dsonar.qualitygate.wait=true
 
-  # Step 5: OpenAPI Validation and Code Generation
   openapi_validation_and_codegen:
     name: OpenAPI Validation & Code Generation
     runs-on: ubuntu-latest
@@ -150,6 +145,18 @@ jobs:
       - name: Start API Server
         run: |
           nohup uvicorn main:app --host 127.0.0.1 --port 8000 &
+
+      # Wait for the server to be ready (can be adjusted as needed)
+      - name: Wait for API server to be ready
+        run: |
+          for i in {1..30}; do
+            if curl -s http://127.0.0.1:8000/openapi.json > /dev/null; then
+              echo "API is up"
+              break
+            fi
+            echo "Waiting for API to start..."
+            sleep 2
+          done
 
       # Validate OpenAPI Spec
       - name: Validate OpenAPI Spec
@@ -188,7 +195,6 @@ jobs:
             generated_client
             generated_server
 
-  # Step 6: Build and Publish Package to AWS CodeArtifact
   build_and_publish_package:
     name: Build and Publish Python Package to AWS CodeArtifact
     runs-on: ubuntu-latest
