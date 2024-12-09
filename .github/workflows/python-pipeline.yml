@@ -28,6 +28,7 @@ env:
   VERSION: ${{ github.sha }}
 
 jobs:
+  # Step 1: Source Checkout
   source_checkout:
     name: Source Checkout
     runs-on: ubuntu-latest
@@ -37,6 +38,7 @@ jobs:
         with:
           repository: ${{ env.REPO_NAME }}
 
+  # Step 2: Run Unit Tests
   unit_tests:
     name: Run Unit Tests
     runs-on: ubuntu-latest
@@ -66,6 +68,7 @@ jobs:
           name: unittest-results-${{ env.VERSION }}
           path: junit/unittest-results.xml
 
+  # Step 3: Run Pytest Tests
   pytest_tests:
     name: Run Pytest Tests
     runs-on: ubuntu-latest
@@ -93,8 +96,9 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: pytest-results-${{ env.VERSION }}
-          path: junit/unittest-results.xml
+          path: junit/pytest-results.xml
 
+  # Step 4: SonarQube Analysis
   sonar_analysis:
     name: SonarQube Analysis
     runs-on: ubuntu-latest
@@ -121,6 +125,70 @@ jobs:
             -Dsonar.coverage.exclusions="**/tests/**" \
             -Dsonar.qualitygate.wait=true
 
+  # Step 5: OpenAPI Validation and Code Generation
+  openapi_validation_and_codegen:
+    name: OpenAPI Validation & Code Generation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ env.REPO_NAME }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install openapi-spec-validator requests pytest
+
+      # Start the API server in the background for validation
+      - name: Start API Server
+        run: |
+          nohup uvicorn main:app --host 127.0.0.1 --port 8000 &
+
+      # Validate OpenAPI Spec
+      - name: Validate OpenAPI Spec
+        run: |
+          curl -s http://127.0.0.1:8000/openapi.json -o openapi.json
+          openapi-spec-validator openapi.json
+
+      # Run API Tests
+      - name: Run API Tests
+        run: |
+          pytest --maxfail=1 --disable-warnings -v
+
+      # Generate Client Stubs
+      - name: Generate Client Stubs
+        run: |
+          wget https://repo1.maven.org/maven2/org/openapitools/openapi-generator-cli/6.6.0/openapi-generator-cli-6.6.0.jar -O openapi-generator-cli.jar
+          java -jar openapi-generator-cli.jar generate \
+            -i http://127.0.0.1:8000/openapi.json \
+            -g python \
+            -o generated_client
+
+      # Generate Server Stubs
+      - name: Generate Server Stubs
+        run: |
+          java -jar openapi-generator-cli.jar generate \
+            -i http://127.0.0.1:8000/openapi.json \
+            -g python-fastapi \
+            -o generated_server
+
+      # Upload Generated Artifacts
+      - name: Upload Generated Code
+        uses: actions/upload-artifact@v3
+        with:
+          name: generated-code
+          path: |
+            generated_client
+            generated_server
+
+  # Step 6: Build and Publish Package to AWS CodeArtifact
   build_and_publish_package:
     name: Build and Publish Python Package to AWS CodeArtifact
     runs-on: ubuntu-latest
@@ -166,48 +234,3 @@ jobs:
         with:
           name: calculator-package
           path: dist/*
-
-  deploy_swagger:
-    name: Deploy Swagger to EC2
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
-      - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Archive Swagger Files
-        run: |
-          tar -czvf swagger.tar.gz swagger/
-
-      - name: Upload Swagger Files to EC2
-        env:
-          EC2_HOST: ${{ secrets.EC2_HOST }}
-          EC2_USER: ${{ secrets.EC2_USER }}
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-        run: |
-          echo "${SSH_PRIVATE_KEY}" > key.pem
-          chmod 600 key.pem
-          mkdir -p ~/.ssh
-          ssh-keyscan -H $EC2_HOST >> ~/.ssh/known_hosts
-          scp -i key.pem swagger.tar.gz $EC2_USER@$EC2_HOST:/home/$EC2_USER/swagger.tar.gz
-
-      - name: Deploy Swagger on EC2
-        env:
-          EC2_HOST: ${{ secrets.EC2_HOST }}
-          EC2_USER: ${{ secrets.EC2_USER }}
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-        run: |
-          ssh -i key.pem $EC2_USER@$EC2_HOST <<EOF
-          mkdir -p /var/www/swagger
-          tar -xzvf /home/$EC2_USER/swagger.tar.gz -C /var/www/swagger
-          EOF
-
-      - name: Verify Swagger Deployment
-        env:
-          EC2_HOST: ${{ secrets.EC2_HOST }}
-        run: |
-          curl -I http://$EC2_HOST/swagger/index.html
