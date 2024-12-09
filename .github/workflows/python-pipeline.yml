@@ -204,7 +204,6 @@ jobs:
           ssh -i key.pem $EC2_USER@$EC2_HOST <<EOF
           mkdir -p /var/www/swagger
           tar -xzvf /home/$EC2_USER/swagger.tar.gz -C /var/www/swagger
-          sudo systemctl restart nginx  # Replace with your web server if not nginx
           EOF
 
       - name: Verify Swagger Deployment
