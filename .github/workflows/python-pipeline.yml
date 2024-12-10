@@ -95,7 +95,7 @@ jobs:
 
       - name: Fetch Swagger Docs
         run: |
-          curl -o swagger.json http://localhost:5000/apidocs/swagger.json  # Fetch Swagger JSON from running app
+          curl -o swagger.json http://localhost:8000/apidocs/swagger.json  # Fetch Swagger JSON from running app
 
       - name: Upload Swagger Docs as Artifact
         uses: actions/upload-artifact@v3
