@@ -216,7 +216,7 @@ jobs:
 
       - name: Deploy to EC2
         run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ec2-user@*** << 'EOF'
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
             cd /home/ec2-user/dt-python-app1-testing-repo/
             python3 -m venv venv
             source venv/bin/activate
@@ -224,5 +224,3 @@ jobs:
             sudo python3 -m pip install -r requirements.txt
             sudo systemctl restart my-python-app.service
           EOF
-
-  
