@@ -58,17 +58,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Check for Unit Test Files
+      - name: Check for Unittest Files
         run: |
-          # Check the correct directory in the 'feature/demo-testing' branch
-          if ! ls tests/*_test.py 1> /dev/null 2>&1; then
-            echo "No unit test files found in tests. Exiting..."
+          if [ -z "$(find tests -type f -name 'test_*.py' -exec grep -l 'unittest' {} +)" ]; then
+            echo "No Unittest files found."
             exit 1
           fi
 
       - name: Run Unit Tests
-        run: |
-          python -m unittest discover -s tests -p '*_test.py' -v
+        env:
+          PYTHONPATH: ./src
+        run: python -m unittest discover tests
 
       - name: Upload Unit Test Results
         uses: actions/upload-artifact@v3
@@ -98,15 +98,15 @@ jobs:
 
       - name: Check for Pytest Files
         run: |
-          # Check the correct directory in the 'feature/demo-testing' branch
-          if ! ls tests/*_test.py 1> /dev/null 2>&1; then
-            echo "No pytest files found in tests. Exiting..."
+          if [ -z "$(find tests -type f -name 'test_*.py' -exec grep -l 'pytest' {} +)" ]; then
+            echo "No Pytest files found."
             exit 1
           fi
 
       - name: Run Pytest
-        run: |
-          pytest tests --maxfail=1 --disable-warnings -v
+        env:
+          PYTHONPATH: ./src
+        run: pytest tests --maxfail=1 --disable-warnings -v
 
       - name: Upload Pytest Results
         uses: actions/upload-artifact@v3
