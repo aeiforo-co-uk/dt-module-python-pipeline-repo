@@ -219,5 +219,5 @@ jobs:
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
             cd /home/ec2-user/unitest_pytest/
             pip install -r requirements.txt
-            sudo systemctl restart app.py
+            sudo systemctl restart python app.py
           EOF
