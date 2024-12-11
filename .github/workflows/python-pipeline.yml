@@ -37,8 +37,8 @@ jobs:
         with:
           repository: ${{ env.REPO_NAME }}
 
-  test:
-    name: Run Tests
+  unit_tests:
+    name: Run Unit Tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -51,38 +51,78 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install dependencies
+      - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-
-      - name: Check for Unittest files
-        run: |
-          if [ -z "$(find tests -type f -name 'test_*.py' -exec grep -l 'unittest' {} +)" ]; then
-            echo "No Unittest files found."
+          if [ -f "requirements.txt" ]; then
+            pip install -r requirements.txt
+          else
+            echo "No requirements.txt file found."
             exit 1
           fi
 
-      - name: Run Unittests
-        env:
-          PYTHONPATH: ./src
-        run: python -m unittest discover tests
-
-      - name: Check for Pytest files
+      - name: Check for Unit Test Files
         run: |
-          if [ -z "$(find tests -type f -name 'test_*.py' -exec grep -l 'pytest' {} +)" ]; then
-            echo "No Pytest files found."
+          if [ ! -d "tests" ]; then
+            echo "No tests directory found. Exiting..."
+            exit 1
+          fi
+          if [ -z "$(find tests -type f -name '*_test.py')" ]; then
+            echo "No unit test files found. Exiting..."
+            exit 1
+          fi
+
+      - name: Run Unit Tests
+        run: |
+          python -m unittest discover -s tests -p '*_test.py' -v
+
+      - name: Upload Unit Test Results
+        uses: actions/upload-artifact@v3
+        with:
+          name: unittest-results-${{ env.VERSION }}
+          path: junit/unittest-results.xml
+
+  pytest_tests:
+    name: Run Pytest Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ env.REPO_NAME }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f "requirements.txt" ]; then
+            pip install -r requirements.txt
+          else
+            echo "No requirements.txt file found."
+            exit 1
+          fi
+
+      - name: Check for Pytest Files
+        run: |
+          if [ ! -d "tests" ]; then
+            echo "No tests directory found. Exiting..."
+            exit 1
+          fi
+          if [ -z "$(find tests -type f -name '*_test.py')" ]; then
+            echo "No pytest files found. Exiting..."
             exit 1
           fi
 
       - name: Run Pytest
-        env:
-          PYTHONPATH: ./src
-        run: pytest tests --import-mode=append
+        run: |
+          pytest --maxfail=1 --disable-warnings -v
 
-      - name: Upload Test Results
-        if: always()
+      - name: Upload Pytest Results
         uses: actions/upload-artifact@v3
         with:
-          name: test-results-${{ env.VERSION }}
-          path: junit/test-results.xml
+          name: pytest-results-${{ env.VERSION }}
+          path: junit/unittest-results.xml
