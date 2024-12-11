@@ -37,94 +37,48 @@ jobs:
         with:
           repository: ${{ env.REPO_NAME }}
 
-  unit_tests:
-    name: Run Unit Tests
+  test:
+    name: Unit and Pytest Execution
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v3
-        with:
-          repository: ${{ env.REPO_NAME }}
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install --no-cache-dir -r requirements.txt
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Check for Unit Test Files
+      - name: Check for Unittest files
         run: |
-          if ! ls tests/*_test.py 1> /dev/null 2>&1; then
-            echo "No unit test files found. Exiting..."
+          if [ -z "$(find tests -type f -name 'test_*.py' -exec grep -l 'unittest' {} +)" ]; then
+            echo "No Unittest files found."
             exit 1
           fi
 
-      - name: Run Unit Tests
+      - name: Run unit tests
+        env:
+          PYTHONPATH: ./src
+        run: python -m unittest discover tests
+
+      - name: Check for Pytest files
         run: |
-          python -m unittest discover -s tests -p '*_test.py' -v
-
-      - name: Upload Unit Test Results
-        uses: actions/upload-artifact@v3
-        with:
-          name: unittest-results-${{ env.VERSION }}
-          path: junit/unittest-results.xml
-
-  pytest_tests:
-    name: Run Pytest Tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-        with:
-          repository: ${{ env.REPO_NAME }}
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install --no-cache-dir -r requirements.txt
-
-      - name: Check for Pytest Files
-        run: |
-          if ! ls tests/*_test.py 1> /dev/null 2>&1; then
-            echo "No pytest files found. Exiting..."
+          if [ -z "$(find tests -type f -name 'test_*.py' -exec grep -l 'pytest' {} +)" ]; then
+            echo "No Pytest files found."
             exit 1
           fi
 
-      - name: Run Pytest
-        run: |
-          pytest --maxfail=1 --disable-warnings -v
+      - name: Run pytest
+        env:
+          PYTHONPATH: ./src
+        run: pytest tests --import-mode=append
 
-      - name: Upload Pytest Results
-        uses: actions/upload-artifact@v3
-        with:
-          name: pytest-results-${{ env.VERSION }}
-          path: junit/pytest-results.xml
-
-  check_flask_version:
-    name: Check Flask Version
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check Flask Version
-        run: |
-          python -c "import flask; print('Flask version:', flask.__version__)"
-          
-  install_flask_and_flasgger:
-    name: Install Flask and Flasgger
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install Flask and Flasgger
-        run: |
-          pip install flask==2.2.3
-          pip install flasgger==0.9.5
 
 
   # coverage_and_sonarqube:
