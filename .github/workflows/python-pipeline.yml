@@ -218,6 +218,8 @@ jobs:
         run: |
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
             cd /home/ec2-user/dt-python-app1-testing-repo/
+            python3 -m venv venv
+            source venv/bin/activate
             sudo pip install -r requirements.txt
             sudo systemctl restart my-python-app.service
           EOF
