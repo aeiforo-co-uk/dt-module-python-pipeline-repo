@@ -58,28 +58,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: List Directory Contents (for debugging)
-        run: |
-          echo "Listing directory contents for debugging"
-          ls -R  # List all files and directories
-
-      - name: Check for Unittest Files
-        run: |
-          if [ -z "$(find tests -type f -name 'test_*.py' -exec grep -l 'unittest' {} +)" ]; then
-            echo "No Unittest files found."
-            exit 1
-          fi
-
       - name: Run Unit Tests
         env:
           PYTHONPATH: ./src
         run: python -m unittest discover tests
-
-      - name: Upload Unit Test Results
-        uses: actions/upload-artifact@v3
-        with:
-          name: unittest-results-${{ env.VERSION }}
-          path: junit/unittest-results.xml
 
   pytest_tests:
     name: Run Pytest Tests
@@ -101,32 +83,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: List Directory Contents (for debugging)
-        run: |
-          echo "Listing directory contents for debugging"
-          ls -R  # List all files and directories
-
-      - name: Check if `tests` Directory Exists
-        run: |
-          if [ ! -d "tests" ]; then
-            echo "Tests directory not found. Skipping Pytest."
-            exit 0
-          fi
-
-      - name: Check for Pytest Files
-        run: |
-          if [ -z "$(find tests -type f -name 'test_*.py' -exec grep -l 'pytest' {} +)" ]; then
-            echo "No Pytest files found."
-            exit 1
-          fi
-
       - name: Run Pytest
         env:
           PYTHONPATH: ./src
         run: pytest tests --maxfail=1 --disable-warnings -v
-
-      - name: Upload Pytest Results
-        uses: actions/upload-artifact@v3
-        with:
-          name: pytest-results-${{ env.VERSION }}
-          path: junit/pytest-results.xml
