@@ -207,6 +207,13 @@ jobs:
           repository: ${{ env.REPO_NAME }}
           ref: ${{ github.ref }}
 
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
       - name: Deploy to EC2
         run: |
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
@@ -214,7 +221,3 @@ jobs:
             pip install -r requirements.txt
             sudo systemctl restart my-flask-app
           EOF
-
-      - name: Upload Swagger Documentation
-        run: |
-          scp -i ~/.ssh/id_rsa swagger.json ec2-user@${{ secrets.EC2_HOST }}:/home/ec2-user/unitest_pytest/static/
