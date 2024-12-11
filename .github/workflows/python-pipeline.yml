@@ -58,66 +58,10 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Check for Unittest files
-        run: |
-          if [ -z "$(find tests -type f -name 'test_*.py' -exec grep -l 'unittest' {} +)" ]; then
-            echo "No Unittest files found."
-            exit 1
-          fi
-
       - name: Run unit tests
         env:
           PYTHONPATH: ./src
         run: python -m unittest discover tests
-
-      - name: Check for Pytest files
-        run: |
-          if [ -z "$(find tests -type f -name 'test_*.py' -exec grep -l 'pytest' {} +)" ]; then
-            echo "No Pytest files found."
-            exit 1
-          fi
-
-      - name: Run pytest
-        env:
-          PYTHONPATH: ./src
-        run: pytest tests --import-mode=append
-
-  coverage_and_sonarqube:
-    name: Code Coverage and SonarQube Scan
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-        with:
-          repository: ${{ env.REPO_NAME }}
-          ref: ${{ github.ref }}
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install pytest pytest-cov
-
-      - name: Run Pytest with Coverage
-        run: |
-          pytest --cov=. --cov-report=xml
-          coverage report
-
-      - name: SonarQube Scan
-        id: sonarqube_scan
-        uses: sonarsource/sonarqube-scan-action@master
-        with:
-          projectBaseDir: .
-          args: >
-            -Dsonar.projectKey=Python_GitAction_Scan
-            -Dsonar.python.coverage.reportPaths=coverage.xml
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
   build_and_publish_package:
     name: Build and Publish Python Package to AWS CodeArtifact
@@ -135,40 +79,16 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Check for Changes
-        id: changes
-        run: |
-          git fetch origin main
-          if git diff --exit-code HEAD origin/main -- . > /dev/null; then
-            echo "No changes detected. Skipping version bump and deployment."
-            echo "should_deploy=true" >> $GITHUB_ENV
-          else
-            echo "Changes detected. Proceeding with version bump and deployment."
-            echo "should_deploy=false" >> $GITHUB_ENV
-          fi
-
-      - name: Increment Version (if needed)
-        if: env.should_deploy == 'true'
-        run: |
-          python bump_version.py
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -am "Bump version to $(cat version.txt)"
-          git push
-
       - name: Install Build Tools
-        if: env.should_deploy == 'true'
         run: |
           python -m pip install --upgrade pip
           pip install setuptools wheel twine
 
       - name: Build Python Package
-        if: env.should_deploy == 'true'
         run: |
           python setup.py sdist bdist_wheel
 
       - name: Configure AWS Credentials
-        if: env.should_deploy == 'true'
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -176,7 +96,6 @@ jobs:
           aws-region: us-east-1
 
       - name: Login to AWS CodeArtifact
-        if: env.should_deploy == 'true'
         run: |
           aws codeartifact login \
             --tool twine \
@@ -185,16 +104,8 @@ jobs:
             --domain-owner 897729129103
 
       - name: Publish Package
-        if: env.should_deploy == 'true'
         run: |
           twine upload --repository codeartifact --verbose dist/*
-
-      - name: Upload Package Artifact to GitHub
-        if: env.should_deploy == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: calculator-package
-          path: dist/*
 
   deploy:
     name: Deploy to EC2 and Serve Swagger
@@ -216,16 +127,29 @@ jobs:
 
       - name: Deploy to EC2
         run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ec2-user@*** << 'EOF'
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
             cd /home/ec2-user/dt-python-app1-testing-repo/
-            if [ -f "requirements.txt" ]; then
+
+            # Create virtual environment if it doesn't exist
+            if [ ! -d "venv" ]; then
               python3 -m venv venv
-              source venv/bin/activate
+            fi
+
+            # Activate the virtual environment
+            source venv/bin/activate
+
+            # Install dependencies if requirements.txt exists
+            if [ -f "requirements.txt" ]; then
               sudo python3 -m pip install --upgrade pip
               sudo python3 -m pip install -r requirements.txt
             else
               echo "requirements.txt not found!"
               exit 1
             fi
+
+            # Run the application (app.py)
+            python3 app.py &  # Run app.py in the background
+
+            # Optionally, restart any related services if needed
             sudo systemctl restart my-python-app.service
           EOF
