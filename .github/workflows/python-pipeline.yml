@@ -36,11 +36,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           repository: ${{ env.REPO_NAME }}
-          ref: 'feature/demo-testing'
-
-      - name: List files in the repository for debugging
-        run: |
-          ls -R
+          ref: ${{ github.ref }}
 
   unit_tests:
     name: Run Unit Tests
@@ -50,7 +46,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           repository: ${{ env.REPO_NAME }}
-          ref: 'feature/demo-testing'
+          ref: ${{ github.ref }}
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -62,17 +58,22 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Check if tests directory exists
+      - name: Check for Unittest files
         run: |
-          if [ ! -d "tests" ]; then
-            echo "Tests directory not found!"
+          if ! ls tests/*_test.py 1> /dev/null 2>&1; then
+            echo "No unit test files found. Exiting..."
             exit 1
           fi
 
       - name: Run Unit Tests
-        env:
-          PYTHONPATH: ./tests
-        run: python -m unittest discover tests
+        run: |
+          python -m unittest discover -s tests -p '*_test.py' -v
+
+      - name: Upload Unit Test Results
+        uses: actions/upload-artifact@v3
+        with:
+          name: unittest-results-${{ env.VERSION }}
+          path: junit/unittest-results.xml
 
   pytest_tests:
     name: Run Pytest Tests
@@ -82,7 +83,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           repository: ${{ env.REPO_NAME }}
-          ref: 'feature/demo-testing'
+          ref: ${{ github.ref }}
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -94,7 +95,137 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Check for Pytest files
+        run: |
+          if ! ls tests/*_test.py 1> /dev/null 2>&1; then
+            echo "No pytest files found. Exiting..."
+            exit 1
+          fi
+
       - name: Run Pytest
+        run: |
+          pytest --maxfail=1 --disable-warnings -v
+
+      - name: Upload Pytest Results
+        uses: actions/upload-artifact@v3
+        with:
+          name: pytest-results-${{ env.VERSION }}
+          path: junit/pytest-results.xml
+
+  coverage_and_sonarqube:
+    name: Code Coverage and SonarQube Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ env.REPO_NAME }}
+          ref: ${{ github.ref }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov
+
+      - name: Run Pytest with Coverage
+        run: |
+          pytest --cov=. --cov-report=xml
+
+      - name: SonarQube Scan
+        id: sonarqube_scan
+        uses: sonarsource/sonarqube-scan-action@master
+        with:
+          projectBaseDir: .
+          args: >
+            -Dsonar.projectKey=Python_GitAction_Scan
+            -Dsonar.python.coverage.reportPaths=coverage.xml
         env:
-          PYTHONPATH: ./src
-        run: pytest tests --maxfail=1 --disable-warnings -v
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+      - name: Checks quality gate
+        uses: sonarsource/sonarqube-quality-gate-action@v1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  build_and_publish_package:
+    name: Build and Publish Python Package to AWS CodeArtifact
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ env.REPO_NAME }}
+          ref: ${{ github.ref }}
+
+      - name: Set Up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Check for Changes
+        id: changes
+        run: |
+          git fetch origin main
+          if git diff --exit-code HEAD origin/main -- . > /dev/null; then
+            echo "No changes detected. Skipping version bump and deployment."
+            echo "should_deploy=true" >> $GITHUB_ENV
+          else
+            echo "Changes detected. Proceeding with version bump and deployment."
+            echo "should_deploy=false" >> $GITHUB_ENV
+          fi
+
+      - name: Increment Version (if needed)
+        if: env.should_deploy == 'true'
+        run: |
+          python bump_version.py
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -am "Bump version to $(cat version.txt)"
+          git push
+
+      - name: Install Build Tools
+        if: env.should_deploy == 'true'
+        run: |
+          python -m pip install --upgrade pip
+          pip install setuptools wheel twine
+
+      - name: Build Python Package
+        if: env.should_deploy == 'true'
+        run: |
+          python setup.py sdist bdist_wheel
+
+      - name: Configure AWS Credentials
+        if: env.should_deploy == 'true'
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Login to AWS CodeArtifact
+        if: env.should_deploy == 'true'
+        run: |
+          aws codeartifact login \
+            --tool twine \
+            --repository pypi-store \
+            --domain ak \
+            --domain-owner 897729129103
+
+      - name: Publish Package
+        if: env.should_deploy == 'true'
+        run: |
+          twine upload --repository codeartifact --verbose dist/*
+
+      - name: Upload Package Artifact to GitHub
+        if: env.should_deploy == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: calculator-package
+          path: dist/*
