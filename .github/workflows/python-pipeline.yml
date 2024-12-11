@@ -105,6 +105,7 @@ jobs:
       - name: Run Pytest with Coverage
         run: |
           pytest --cov=. --cov-report=xml
+          coverage report
 
       - name: SonarQube Scan
         id: sonarqube_scan
