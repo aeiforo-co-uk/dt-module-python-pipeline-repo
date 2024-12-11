@@ -38,6 +38,10 @@ jobs:
           repository: ${{ env.REPO_NAME }}
           ref: 'feature/demo-testing'
 
+      - name: List files in the repository for debugging
+        run: |
+          ls -R
+
   unit_tests:
     name: Run Unit Tests
     runs-on: ubuntu-latest
