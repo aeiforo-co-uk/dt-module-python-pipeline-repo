@@ -36,6 +36,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           repository: ${{ env.REPO_NAME }}
+          ref: 'feature/demo-testing'  # Checkout the correct branch
 
   unit_tests:
     name: Run Unit Tests
@@ -45,6 +46,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           repository: ${{ env.REPO_NAME }}
+          ref: 'feature/demo-testing'  # Ensure the branch is checked out
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -58,14 +60,15 @@ jobs:
 
       - name: Check for Unit Test Files
         run: |
-          if ! ls "feature/demo-testing/tests/*_test.py" 1> /dev/null 2>&1; then
-            echo "No unit test files found in feature/demo-testing/tests %20. Exiting..."
+          # Check the correct directory in the 'feature/demo-testing' branch
+          if ! ls tests/*_test.py 1> /dev/null 2>&1; then
+            echo "No unit test files found in tests. Exiting..."
             exit 1
           fi
 
       - name: Run Unit Tests
         run: |
-          python -m unittest discover -s "feature/demo-testing/tests" -p '*_test.py' -v
+          python -m unittest discover -s tests -p '*_test.py' -v
 
       - name: Upload Unit Test Results
         uses: actions/upload-artifact@v3
@@ -81,6 +84,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           repository: ${{ env.REPO_NAME }}
+          ref: 'feature/demo-testing'  # Ensure the branch is checked out
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -94,14 +98,15 @@ jobs:
 
       - name: Check for Pytest Files
         run: |
-          if ! ls "feature/demo-testing/tests/*_test.py" 1> /dev/null 2>&1; then
-            echo "No pytest files found in feature/demo-testing/tests. Exiting..."
+          # Check the correct directory in the 'feature/demo-testing' branch
+          if ! ls tests/*_test.py 1> /dev/null 2>&1; then
+            echo "No pytest files found in tests. Exiting..."
             exit 1
           fi
 
       - name: Run Pytest
         run: |
-          pytest "feature/demo-testing/tests" --maxfail=1 --disable-warnings -v
+          pytest tests --maxfail=1 --disable-warnings -v
 
       - name: Upload Pytest Results
         uses: actions/upload-artifact@v3
