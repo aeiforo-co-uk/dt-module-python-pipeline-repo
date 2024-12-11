@@ -58,14 +58,14 @@ jobs:
 
       - name: Check for Unit Test Files
         run: |
-          if ! ls tests/*_test.py 1> /dev/null 2>&1; then
-            echo "No unit test files found. Exiting..."
+          if ! ls feature/demo-testing/*_test.py 1> /dev/null 2>&1; then
+            echo "No unit test files found in feature/demo-testing. Exiting..."
             exit 1
           fi
 
       - name: Run Unit Tests
         run: |
-          python -m unittest discover -s tests -p '*_test.py' -v
+          python -m unittest discover -s feature/demo-testing -p '*_test.py' -v
 
       - name: Upload Unit Test Results
         uses: actions/upload-artifact@v3
@@ -94,14 +94,14 @@ jobs:
 
       - name: Check for Pytest Files
         run: |
-          if ! ls tests/*_test.py 1> /dev/null 2>&1; then
-            echo "No pytest files found. Exiting..."
+          if ! ls feature/demo-testing/*_test.py 1> /dev/null 2>&1; then
+            echo "No pytest files found in feature/demo-testing. Exiting..."
             exit 1
           fi
 
       - name: Run Pytest
         run: |
-          pytest --maxfail=1 --disable-warnings -v
+          pytest feature/demo-testing --maxfail=1 --disable-warnings -v
 
       - name: Upload Pytest Results
         uses: actions/upload-artifact@v3
