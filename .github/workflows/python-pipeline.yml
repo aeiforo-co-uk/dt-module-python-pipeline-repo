@@ -216,8 +216,10 @@ jobs:
             
             # Install git and clone the repository
             sudo yum install git -y
-            git clone https://github.com/Ashwini-Kanagaraj/swagger_server02.git
-            cd swagger_server02
+            git clone https://github.com/aeiforo-co-uk/dt-python-app1-testing-repo.git
+            cd dt-python-app1-testing-repo
+            # Check out the desired branch
+            git checkout feature/demo-testing
             
             # Install Python and pip
             sudo yum install python3 -y
