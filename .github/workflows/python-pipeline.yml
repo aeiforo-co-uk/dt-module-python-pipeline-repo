@@ -20,6 +20,11 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+  
 env:
   REPO_NAME: ${{ inputs.repo_name }}
   DEPLOY_ENV: ${{ inputs.deploy_env }}
@@ -122,9 +127,7 @@ jobs:
   build_and_publish_package:
     name: Build and Publish Python Package to AWS CodeArtifact
     runs-on: ubuntu-latest
-    
-    permissions:
-        contents: write
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
