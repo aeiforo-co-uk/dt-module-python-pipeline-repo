@@ -217,7 +217,7 @@ jobs:
             # Install git and clone the repository
             sudo yum install git -y
             git clone https://${{ secrets.MY_GITHUB_TOKEN }}@github.com/aeiforo-co-uk/dt-python-app1-testing-repo.git
-            cd dt-python-app1-testing-repo
+            cd /home/ec2-user/dt-python-app1-testing-repo
             # Check out the desired branch
             git checkout feature/demo-testing
             
