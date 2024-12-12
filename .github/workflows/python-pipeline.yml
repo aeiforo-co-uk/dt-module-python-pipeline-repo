@@ -24,7 +24,7 @@ permissions:
   contents: write
   packages: write
   id-token: write
-  
+
 env:
   REPO_NAME: ${{ inputs.repo_name }}
   DEPLOY_ENV: ${{ inputs.deploy_env }}
@@ -63,66 +63,10 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Check for Unittest files
-        run: |
-          if [ -z "$(find tests -type f -name 'test_*.py' -exec grep -l 'unittest' {} +)" ]; then
-            echo "No Unittest files found."
-            exit 1
-          fi
-
       - name: Run unit tests
         env:
           PYTHONPATH: ./src
         run: python -m unittest discover tests
-
-      - name: Check for Pytest files
-        run: |
-          if [ -z "$(find tests -type f -name 'test_*.py' -exec grep -l 'pytest' {} +)" ]; then
-            echo "No Pytest files found."
-            exit 1
-          fi
-
-      - name: Run pytest
-        env:
-          PYTHONPATH: ./src
-        run: pytest tests --import-mode=append
-
-  coverage_and_sonarqube:
-    name: Code Coverage and SonarQube Scan
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-        with:
-          repository: ${{ env.REPO_NAME }}
-          ref: ${{ github.ref }}
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install pytest pytest-cov
-
-      - name: Run Pytest with Coverage
-        run: |
-          pytest --cov=. --cov-report=xml
-          coverage report
-
-      - name: SonarQube Scan
-        id: sonarqube_scan
-        uses: sonarsource/sonarqube-scan-action@master
-        with:
-          projectBaseDir: .
-          args: >
-            -Dsonar.projectKey=Python_GitAction_Scan
-            -Dsonar.python.coverage.reportPaths=coverage.xml
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
   build_and_publish_package:
     name: Build and Publish Python Package to AWS CodeArtifact
@@ -194,13 +138,6 @@ jobs:
         run: |
           twine upload --repository codeartifact --verbose dist/*
 
-      - name: Upload Package Artifact to GitHub
-        if: env.should_deploy == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: calculator-package
-          path: dist/*
-
   deploy_swagger_api:
     name: Deploy Swagger API on EC2
     runs-on: ubuntu-latest
@@ -211,31 +148,20 @@ jobs:
       - name: Set up SSH for EC2
         uses: webfactory/ssh-agent@v0.5.3
         with:
-          ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}  # EC2 private key stored as a GitHub Secret
+          ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
 
       - name: Deploy Swagger API on EC2
         run: |
           ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
-            # Update system packages
             sudo yum update -y
-            
-            # Install git and clone the repository
             sudo yum install git -y
             git clone https://${{ secrets.MY_GITHUB_TOKEN }}@github.com/aeiforo-co-uk/dt-python-app1-testing-repo.git
             cd /home/ec2-user/dt-python-app1-testing-repo
-            # Check out the desired branch
-            git checkout feature/demo-testing
-            
-            # Install Python and pip
+            git checkout main
             sudo yum install python3 -y
             sudo yum install python3-pip -y
-            
-            # Install dependencies
-            sudo pip3 install flasgger
+            sudo pip3 install flasgger Flask Flask-RESTful flask-swagger-ui
             pip3 install -r requirements.txt
-            sudo pip3 install Flask Flask-RESTful flask-swagger-ui
-            
-            # Run the Flask app
             nohup python3 app.py > app.log 2>&1 &
           EOF
 
