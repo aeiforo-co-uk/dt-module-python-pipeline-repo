@@ -142,8 +142,8 @@ jobs:
       - name: Check for Changes
         id: changes
         run: |
-          git fetch origin feature/demo-testing
-          if git diff --exit-code HEAD origin/feature/demo-testing -- . > /dev/null; then
+          git fetch origin development
+          if git diff --exit-code HEAD origin/development -- . > /dev/null; then
             echo "Changes detected. Proceeding with version bump and deployment."
             echo "should_deploy=true" >> $GITHUB_ENV
           else
@@ -224,7 +224,7 @@ jobs:
             git clone https://${{ secrets.MY_GITHUB_TOKEN }}@github.com/aeiforo-co-uk/dt-python-app1-testing-repo.git
             cd /home/ec2-user/dt-python-app1-testing-repo
             # Check out the desired branch
-            git checkout feature/demo-testing
+            git checkout development
             
             # Install Python and pip
             sudo yum install python3 -y
