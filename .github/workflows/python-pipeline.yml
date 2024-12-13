@@ -148,10 +148,10 @@ jobs:
            git diff --exit-code origin/development -- . > /dev/null
            if [ $? -eq 0 ]; then
              echo "No changes detected in development. Skipping version bump and deployment."
-             echo "should_deploy=false" >> $GITHUB_ENV
+             echo "should_deploy=true" >> $GITHUB_ENV
            else
              echo "Changes detected in development. Proceeding with version bump and deployment."
-             echo "should_deploy=true" >> $GITHUB_EN
+             echo "should_deploy=false" >> $GITHUB_EN
            fi
 
 
