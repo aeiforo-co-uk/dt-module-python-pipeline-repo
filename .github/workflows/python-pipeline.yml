@@ -191,7 +191,7 @@ jobs:
             --tool twine \
             --repository pypi-store \
             --domain ak \
-            --domain-owner 897729129103
+            --domain-owner 061039767866
 
       - name: Publish Package
         if: env.should_deploy == 'true'
