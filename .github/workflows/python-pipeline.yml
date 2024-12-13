@@ -144,16 +144,14 @@ jobs:
       - name: Check for Changes
         id: changes
         run: |
-           git fetch origin development
-           git diff --exit-code origin/development -- . > /dev/null
-           if [ $? -eq 0 ]; then
-             echo "No changes detected in development. Skipping version bump and deployment."
-             echo "should_deploy=true" >> $GITHUB_ENV
-           else
-             echo "Changes detected in development. Proceeding with version bump and deployment."
-             echo "should_deploy=false" >> $GITHUB_EN
-           fi
-
+          git fetch origin development
+          if git diff --exit-code HEAD origin/development -- . > /dev/null; then
+            echo "Changes detected. Proceeding with version bump and deployment."
+            echo "should_deploy=true" >> $GITHUB_ENV
+          else
+            echo "No changes detected. Skipping version bump and deployment."
+            echo "should_deploy=false" >> $GITHUB_ENV
+          fi
 
       - name: Increment Version (if needed)
         if: env.should_deploy == 'true'
