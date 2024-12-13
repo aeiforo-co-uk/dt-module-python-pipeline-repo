@@ -216,6 +216,12 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
+      - name: Generate version.txt (if missing)
+        run: echo "1.0.0" > version.txt  # Replace "1.0.0" with the actual version logic
+
+      - name: Verify version.txt
+        run: cat version.txt
+
       - name: Get Latest Artifact from CodeArtifact
         run: |
           aws codeartifact get-package-version-asset \
@@ -227,6 +233,7 @@ jobs:
             --package-version $(cat version.txt) \
             --asset-name calculator-package-$(cat version.txt).zip \
             calculator-package.zip
+
 
       - name: Transfer Artifact to EC2
         env:
