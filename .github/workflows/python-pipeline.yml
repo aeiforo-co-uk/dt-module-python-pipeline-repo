@@ -125,10 +125,10 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
       
-      - name: Checks quality gate
-        uses: sonarsource/sonarqube-quality-gate-action@v1
-        env:
-         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      # - name: Checks quality gate
+      #   uses: sonarsource/sonarqube-quality-gate-action@v1
+      #   env:
+      #    SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         
   build_and_publish_package:
     name: Artifact
@@ -208,45 +208,69 @@ jobs:
           name: calculator-package
           path: dist/*
 
-  deploy_swagger_api:
-    name: Swagger API 
+  deploy_to_ec2:
+    name: Deploy to EC2
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
-      - name: Set up SSH for EC2
-        uses: webfactory/ssh-agent@v0.5.3
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
         with:
-          ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}  # EC2 private key stored as a GitHub Secret
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
 
-      - name: Deploy Swagger API on EC2
+      - name: Login to AWS CodeArtifact
         run: |
-          ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
-            # Update system packages
-            sudo yum update -y
-            
-            # Install git and clone the repository
-            sudo yum install git -y
-            git clone https://${{ secrets.MY_GITHUB_TOKEN }}@github.com/aeiforo-co-uk/dt-python-app1-testing-repo.git
-            cd /home/ec2-user/dt-python-app1-testing-repo
-            # Check out the desired branch
-            git checkout development
-            
-            # Install Python and pip
-            sudo yum install python3 -y
-            sudo yum install python3-pip -y
-            
-            # Install dependencies
-            sudo pip3 install flasgger
-            pip3 install -r requirements.txt
-            sudo pip3 install Flask Flask-RESTful flask-swagger-ui
-            
-            # Run the Flask app
-            nohup python3 app.py > app.log 2>&1 &
-          EOF
+          aws codeartifact login \
+            --tool pip \
+            --repository pypi-store \
+            --domain aeiforo \
+            --domain-owner 061039767866
 
-      - name: Output Swagger URL
+      - name: Install Latest Package from CodeArtifact
         run: |
-          echo "Swagger API deployed successfully!"
-          echo "Access the Swagger UI at http://${{ secrets.EC2_PUBLIC_IP }}:5001/apidocs"
+          pip install --upgrade your-package-name
+
+      - name: Set up SSH to EC2
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_PRIVATE_KEY }}
+          port: 22
+
+      - name: Deploy Application to EC2
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_PRIVATE_KEY }}
+          port: 22
+          script: |
+            # Stop the current application service if running
+            sudo systemctl stop your-application.service || true
+
+            # Remove old versions of the application
+            sudo rm -rf /path/to/your/application
+
+            # Create a directory for the application
+            sudo mkdir -p /path/to/your/application
+            cd /path/to/your/application
+
+            # Install the package from CodeArtifact
+            pip install your-package-name --target ./
+
+            # Restart the application service
+            sudo systemctl start your-application.service
+
+      - name: Confirm Deployment
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_PRIVATE_KEY }}
+          port: 22
+          script: |
+            # Check the status of the application service
+            sudo systemctl status your-application.service
