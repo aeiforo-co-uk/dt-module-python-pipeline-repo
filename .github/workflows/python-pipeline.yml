@@ -230,7 +230,7 @@ jobs:
 
       - name: Install Latest Package from CodeArtifact
         run: |
-          pip install --upgrade your-package-name
+          pip install --upgrade calculator
 
       - name: Set up SSH to EC2
         uses: appleboy/ssh-action@v0.1.10
