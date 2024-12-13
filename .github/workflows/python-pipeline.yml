@@ -148,7 +148,7 @@ jobs:
            git fetch origin main development
 
            # Check if there are any commits in development not in main
-           if git log origin/main..HEAD --oneline | grep -q .; then
+           if git log origin/main..origin/development --oneline | grep -q .; then
              echo "Changes detected in development branch. Proceeding with version bump and deployment."
              echo "should_deploy=true" >> $GITHUB_ENV
            else
