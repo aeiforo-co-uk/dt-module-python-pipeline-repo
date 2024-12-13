@@ -30,8 +30,6 @@ env:
   PYTHON_VERSION: ${{ inputs.python_version }}
   VERSION: ${{ github.sha }}
 
-permissions:
-  contents: write  
 
 jobs:
   source_checkout:
