@@ -155,8 +155,6 @@ jobs:
 
       - name: Increment Version (if needed)
         if: env.should_deploy == 'true'
-        env:
-            MY_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
         run: |
           python bump_version.py
           git config user.name "github-actions[bot]"
