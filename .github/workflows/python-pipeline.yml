@@ -190,7 +190,7 @@ jobs:
           aws codeartifact login \
             --tool twine \
             --repository pypi-store \
-            --domain ak \
+            --domain aeiforo\
             --domain-owner 061039767866
 
       - name: Publish Package
