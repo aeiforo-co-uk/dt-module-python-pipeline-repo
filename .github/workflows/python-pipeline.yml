@@ -151,8 +151,8 @@ jobs:
         if: env.should_deploy == 'true'
         run: |
           python bump_version.py
-          git config user.name "akhilesh"
-          git config user.email "akhileshmony@gmain.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git commit -am "Bump version to $(cat version.txt)"
           git push
 
