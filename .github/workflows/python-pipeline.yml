@@ -145,7 +145,7 @@ jobs:
             echo "should_deploy=false" >> $GITHUB_ENV
           else
             echo "No changes detected. Skipping version bump and deployment."
-            echo "should_deploy=false" >> $GITHUB_ENV
+            echo "should_deploy=true" >> $GITHUB_ENV
           fi
 
 
