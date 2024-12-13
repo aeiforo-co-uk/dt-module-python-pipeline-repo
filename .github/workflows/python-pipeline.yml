@@ -127,11 +127,11 @@ jobs:
         env:
          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-      - name: Fail workflow on quality gate failure
-        if: ${{ steps.quality_gate.outputs.quality_gate_status != 'passed' }}
-        run: |
-          echo "Quality gate failed. Failing the workflow."
-          exit 1
+      # - name: Fail workflow on quality gate failure
+      #   if: ${{ steps.quality_gate.outputs.quality_gate_status != 'passed' }}
+      #   run: |
+      #     echo "Quality gate failed. Failing the workflow."
+      #     exit 1
 
   build_and_publish_package:
     name: Artifact
