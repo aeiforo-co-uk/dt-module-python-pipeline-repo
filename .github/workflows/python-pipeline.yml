@@ -225,19 +225,24 @@ jobs:
             --format pypi \
             --package calculator-package \
             --package-version $(cat version.txt) \
-            --asset-name calculator-package-$(cat version.txt).tar.gz \
-            calculator-package.tar.gz
+            --asset-name calculator-package-$(cat version.txt).zip \
+            calculator-package.zip
 
       - name: Transfer Artifact to EC2
         env:
-          ARTIFACT_FILE: calculator-package.tar.gz
+          ARTIFACT_FILE: calculator-package.zip
         run: |
           scp -i ${{ secrets.EC2_SSH_KEY }} $ARTIFACT_FILE ec2-user@${{ secrets.EC2_INSTANCE_IP }}:/home/ec2-user/
 
       - name: Deploy on EC2
         run: |
           ssh -i ${{ secrets.EC2_SSH_KEY }} ec2-user@${{ secrets.EC2_INSTANCE_IP }} << EOF
-            cd /var/www/swagger-ui
+            # Unzip the artifact
+            unzip /home/ec2-user/calculator-package.zip -d /var/www/swagger-ui
+            # Perform any additional deployment steps
+            echo "Deployment complete."
+          EOF
+
             rm -rf calculator-package*
             mv /home/ec2-user/calculator-package.tar.gz .
             tar -xvzf calculator-package.tar.gz
