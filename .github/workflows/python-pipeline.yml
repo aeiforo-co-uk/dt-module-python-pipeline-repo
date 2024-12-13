@@ -43,7 +43,7 @@ jobs:
           ref: ${{ github.ref }}
 
   unit_tests:
-    name: Run Unit Tests
+    name: Run Unit & pytest 
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -87,7 +87,7 @@ jobs:
         run: pytest tests --import-mode=append
 
   coverage_and_sonarqube:
-    name: Code Coverage and SonarQube Scan
+    name: SonarQube Analysis
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -106,9 +106,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install pytest pytest-cov
 
-      - name: Run Pytest with Coverage
+      - name: Code Coverage
         run: |
           pytest --cov=. --cov-report=xml
+          coverage run -m unittest discover
           coverage report
 
       - name: SonarQube Scan
@@ -202,7 +203,7 @@ jobs:
           path: dist/*
 
   deploy_swagger_api:
-    name: Deploy Swagger API on EC2
+    name: Swagger API 
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
