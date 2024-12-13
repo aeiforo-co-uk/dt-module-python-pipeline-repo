@@ -1,8 +1,7 @@
 name: Python CI/CD Pipeline
 
 
-# permissions:
-#   contents: write    # Both read and write access to repository contents
+    # Both read and write access to repository contents
   
 on:
   workflow_call:
@@ -30,6 +29,9 @@ env:
   BUILD_ARTIFACTS: ${{ inputs.build_artifacts }}
   PYTHON_VERSION: ${{ inputs.python_version }}
   VERSION: ${{ github.sha }}
+
+permissions:
+  contents: write  
 
 jobs:
   source_checkout:
