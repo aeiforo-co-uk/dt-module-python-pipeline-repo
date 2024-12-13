@@ -139,7 +139,7 @@ jobs:
       - name: Check for Changes
         id: changes
         run: |
-          git fetch origin main development
+          git fetch origin  development
           if git diff --exit-code HEAD origin/development -- . > /dev/null; then
             echo "Changes detected. Proceeding with version bump and deployment."
             echo "should_deploy=true" >> $GITHUB_ENV
