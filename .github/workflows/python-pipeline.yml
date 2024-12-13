@@ -125,7 +125,7 @@ jobs:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
   build_and_publish_package:
-    name: Build and Publish Python Package to AWS CodeArtifact
+    name: Artifact
     runs-on: ubuntu-latest
 
     steps:
