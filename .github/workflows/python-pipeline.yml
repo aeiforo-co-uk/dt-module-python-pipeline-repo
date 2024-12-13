@@ -3,8 +3,6 @@ name: Python CI/CD Pipeline
 
 permissions:
   contents: write    # Both read and write access to repository contents
-  actions: read      # Read-only access to Actions
-  checks: write 
   
 on:
   workflow_call:
