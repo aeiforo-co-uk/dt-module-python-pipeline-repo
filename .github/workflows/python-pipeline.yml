@@ -190,7 +190,7 @@ jobs:
         run: |
           twine upload --repository codeartifact --verbose dist/*
 
-      - name: Upload Package Artifact to GitHub
+      - name: Upload Package Artifact to AWS
         if: env.should_deploy == 'true'
         uses: actions/upload-artifact@v4
         with:
