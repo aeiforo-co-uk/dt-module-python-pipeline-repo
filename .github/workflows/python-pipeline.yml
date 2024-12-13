@@ -111,7 +111,6 @@ jobs:
       - name: Code Coverage
         run: |
           pytest --cov=. --cov-report=xml
-          coverage run -m unittest discover
           coverage report
 
       - name: SonarQube Scan
