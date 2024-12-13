@@ -201,45 +201,51 @@ jobs:
           name: calculator-package
           path: dist/*
 
-  deploy_swagger_api:
-    name: Swagger API 
+  deploy_to_ec2:
+    name: Deploy to EC2
     runs-on: ubuntu-latest
+    needs: build_and_publish_package
+    if: ${{ needs.build_and_publish_package.outputs.should_deploy == 'true' }}
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
-      - name: Set up SSH for EC2
-        uses: webfactory/ssh-agent@v0.5.3
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
         with:
-          ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}  # EC2 private key stored as a GitHub Secret
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
 
-      - name: Deploy Swagger API on EC2
+      - name: Get Latest Artifact from CodeArtifact
         run: |
-          ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
-            # Update system packages
-            sudo yum update -y
-            
-            # Install git and clone the repository
-            sudo yum install git -y
-            git clone https://${{ secrets.MY_GITHUB_TOKEN }}@github.com/aeiforo-co-uk/dt-python-app1-testing-repo.git
-            cd /home/ec2-user/dt-python-app1-testing-repo
-            # Check out the desired branch
-            git checkout development
-            
-            # Install Python and pip
-            sudo yum install python3 -y
-            sudo yum install python3-pip -y
-            
-            # Install dependencies
-            sudo pip3 install flasgger
-            pip3 install -r requirements.txt
-            sudo pip3 install Flask Flask-RESTful flask-swagger-ui
-            
-            # Run the Flask app
-            nohup python3 app.py > app.log 2>&1 &
+          aws codeartifact get-package-version-asset \
+            --domain aeiforo \
+            --domain-owner 061039767866 \
+            --repository pypi-store \
+            --format pypi \
+            --package calculator-package \
+            --package-version $(cat version.txt) \
+            --asset-name calculator-package-$(cat version.txt).tar.gz \
+            calculator-package.tar.gz
+
+      - name: Transfer Artifact to EC2
+        env:
+          ARTIFACT_FILE: calculator-package.tar.gz
+        run: |
+          scp -i ${{ secrets.EC2_SSH_KEY }} $ARTIFACT_FILE ec2-user@${{ secrets.EC2_INSTANCE_IP }}:/home/ec2-user/
+
+      - name: Deploy on EC2
+        run: |
+          ssh -i ${{ secrets.EC2_SSH_KEY }} ec2-user@${{ secrets.EC2_INSTANCE_IP }} << EOF
+            # Navigate to the directory
+            cd /var/www/swagger-ui
+
+            # Remove old files
+            rm -rf calculator-package*
+
+            # Extract the new artifact
+            mv /home/ec2-user/calculator-package.tar.gz .
+            tar -xvzf calculator-package.tar.gz
+
+            # Restart Swagger UI (example; adapt as needed)
+            sudo systemctl restart swagger-ui
           EOF
 
-      - name: Output Swagger URL
-        run: |
-          echo "Swagger API deployed successfully!"
-          echo "Access the Swagger UI at http://${{ secrets.EC2_PUBLIC_IP }}:5001/apidocs"
