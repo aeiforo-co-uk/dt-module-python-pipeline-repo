@@ -43,7 +43,7 @@ jobs:
           ref: ${{ github.ref }}
 
   unit_tests:
-    name: Run Unit & pytest 
+    name: Unit Test & pytest 
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
