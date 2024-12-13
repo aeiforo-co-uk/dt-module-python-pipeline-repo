@@ -1,8 +1,5 @@
 name: Python CI/CD Pipeline
 
-
-    # Both read and write access to repository contents
-  
 on:
   workflow_call:
     inputs:
@@ -31,7 +28,7 @@ env:
   VERSION: ${{ github.sha }}
 
 permissions:
-  contents: write  
+  contents: write
 
 jobs:
   source_checkout:
@@ -45,7 +42,7 @@ jobs:
           ref: ${{ github.ref }}
 
   unit_tests:
-    name: Unit Test & pytest 
+    name: Unit Test & pytest
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -125,15 +122,20 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
       
-      # - name: Checks quality gate
-      #   uses: sonarsource/sonarqube-quality-gate-action@v1
-      #   env:
-      #    SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        
+      - name: Checks quality gate
+        uses: sonarsource/sonarqube-quality-gate-action@v1
+        env:
+         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Fail workflow on quality gate failure
+        if: ${{ steps.quality_gate.outputs.quality_gate_status != 'passed' }}
+        run: |
+          echo "Quality gate failed. Failing the workflow."
+          exit 1
+
   build_and_publish_package:
     name: Artifact
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -164,7 +166,7 @@ jobs:
           python bump_version.py
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin https://${{ secrets.MY_GITHUB_TOKEN }}@github.com/${{ env.REPO_NAME }}.git
+          git remote set-url origin https://${{ secrets.MY_GITHUB_TOKEN }}@github.com/${{ env.REPO_NAME }}.git
           git commit -am "Bump version to $(cat version.txt)"
           git push
 
@@ -193,7 +195,7 @@ jobs:
           aws codeartifact login \
             --tool twine \
             --repository pypi-store \
-            --domain aeiforo\
+            --domain aeiforo \
             --domain-owner 061039767866
 
       - name: Publish Package
@@ -211,7 +213,6 @@ jobs:
   deploy_to_ec2:
     name: Deploy to EC2
     runs-on: ubuntu-latest
-
     steps:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -230,7 +231,7 @@ jobs:
 
       - name: Install Latest Package from CodeArtifact
         run: |
-          pip install --upgrade calculator
+          pip install --upgrade your-package-name
 
       - name: Set up SSH to EC2
         uses: appleboy/ssh-action@v0.1.10
