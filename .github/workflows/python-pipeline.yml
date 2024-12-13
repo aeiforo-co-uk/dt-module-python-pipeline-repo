@@ -203,55 +203,55 @@ jobs:
           name: calculator-package
           path: dist/*
 
-  deploy_to_ec2:
-    name: Deploy to EC2
-    runs-on: ubuntu-latest
-    needs: build_and_publish_package
-    if: ${{ needs.build_and_publish_package.outputs.should_deploy == 'true' }}
-    steps:
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+  # deploy_to_ec2:
+  #   name: Deploy to EC2
+  #   runs-on: ubuntu-latest
+  #   needs: build_and_publish_package
+  #   if: ${{ needs.build_and_publish_package.outputs.should_deploy == 'true' }}
+  #   steps:
+  #     - name: Configure AWS Credentials
+  #       uses: aws-actions/configure-aws-credentials@v2
+  #       with:
+  #         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  #         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  #         aws-region: us-east-1
 
-      - name: Generate version.txt (if missing)
-        run: echo "1.0.0" > version.txt  # Replace "1.0.0" with the actual version logic
+  #     - name: Generate version.txt (if missing)
+  #       run: echo "1.0.0" > version.txt  # Replace "1.0.0" with the actual version logic
 
-      - name: Verify version.txt
-        run: cat version.txt
+  #     - name: Verify version.txt
+  #       run: cat version.txt
 
-      - name: Get Latest Artifact from CodeArtifact
-        run: |
-          aws codeartifact get-package-version-asset \
-            --domain aeiforo \
-            --domain-owner 061039767866 \
-            --repository pypi-store \
-            --format pypi \
-            --package calculator-package \
-            --package-version $(cat version.txt) \
-            --asset-name calculator-package-$(cat version.txt).zip \
-            calculator-package.zip
+  #     - name: Get Latest Artifact from CodeArtifact
+  #       run: |
+  #         aws codeartifact get-package-version-asset \
+  #           --domain aeiforo \
+  #           --domain-owner 061039767866 \
+  #           --repository pypi-store \
+  #           --format pypi \
+  #           --package calculator-package \
+  #           --package-version $(cat version.txt) \
+  #           --asset-name calculator-package-$(cat version.txt).zip \
+  #           calculator-package.zip
 
 
-      - name: Transfer Artifact to EC2
-        env:
-          ARTIFACT_FILE: calculator-package.zip
-        run: |
-          scp -i ${{ secrets.EC2_SSH_KEY }} $ARTIFACT_FILE ec2-user@${{ secrets.EC2_INSTANCE_IP }}:/home/ec2-user/
+  #     - name: Transfer Artifact to EC2
+  #       env:
+  #         ARTIFACT_FILE: calculator-package.zip
+  #       run: |
+  #         scp -i ${{ secrets.EC2_SSH_KEY }} $ARTIFACT_FILE ec2-user@${{ secrets.EC2_INSTANCE_IP }}:/home/ec2-user/
 
-      - name: Deploy on EC2
-        run: |
-          ssh -i ${{ secrets.EC2_SSH_KEY }} ec2-user@${{ secrets.EC2_INSTANCE_IP }} << EOF
-            # Unzip the artifact
-            unzip /home/ec2-user/calculator-package.zip -d /var/www/swagger-ui
-            # Perform any additional deployment steps
-            echo "Deployment complete."
-          EOF
+  #     - name: Deploy on EC2
+  #       run: |
+  #         ssh -i ${{ secrets.EC2_SSH_KEY }} ec2-user@${{ secrets.EC2_INSTANCE_IP }} << EOF
+  #           # Unzip the artifact
+  #           unzip /home/ec2-user/calculator-package.zip -d /var/www/swagger-ui
+  #           # Perform any additional deployment steps
+  #           echo "Deployment complete."
+  #         EOF
 
-            rm -rf calculator-package*
-            mv /home/ec2-user/calculator-package.tar.gz .
-            tar -xvzf calculator-package.tar.gz
-            sudo systemctl restart swagger-ui
-          EOF
+  #           rm -rf calculator-package*
+  #           mv /home/ec2-user/calculator-package.tar.gz .
+  #           tar -xvzf calculator-package.tar.gz
+  #           sudo systemctl restart swagger-ui
+  #         EOF
