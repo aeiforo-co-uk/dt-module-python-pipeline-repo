@@ -136,6 +136,7 @@ jobs:
   build_and_publish_package:
     name: Artifact
     runs-on: ubuntu-latest
+    if: ${{ steps.quality_gate.outputs.quality_gate_status == 'passed' }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
