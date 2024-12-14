@@ -213,15 +213,15 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Ensure the entire repository history is fetched
-
+  
       # Step 2: Debug - List files to confirm version.txt exists
       - name: List Files in Repository
         run: ls -al
-
+  
       # Step 3: Verify that version.txt exists and display its content
       - name: Verify version.txt
         run: cat ./version.txt
-
+  
       # Step 4: Configure AWS credentials
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -229,12 +229,12 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
-
+  
       # Step 5: Fetch the latest artifact from AWS CodeArtifact
       - name: Debug Version
         run: |
           echo "Version in file: $(cat version.txt)"
-
+  
       - name: Get Latest Artifact from CodeArtifact
         run: |
           aws codeartifact get-package-version-asset \
@@ -248,14 +248,15 @@ jobs:
             --output json \
             | jq -r '.asset' > calculator-package.zip
           ls -lh calculator-package.zip  # Debug - Ensure the artifact is downloaded
-
+  
       # Step 6: Transfer the artifact to EC2
       - name: Transfer Artifact to EC2
         env:
           ARTIFACT_FILE: calculator-package.zip
         run: |
+          echo "Transferring artifact: $ARTIFACT_FILE to EC2"
           scp -o StrictHostKeyChecking=no -i ${{ secrets.EC2_SSH_KEY }} $ARTIFACT_FILE ec2-user@${{ secrets.EC2_INSTANCE_IP }}:/home/ec2-user/
-
+  
       # Step 7: Deploy the artifact on EC2
       - name: Deploy on EC2
         run: |
@@ -264,15 +265,21 @@ jobs:
             APP_NAME="calculator-app"
             ARTIFACT_FILE="calculator-package.zip"
             INSTALL_DIR="/home/ec2-user/$APP_NAME"
-
+  
             # Unzip the package
             unzip $ARTIFACT_FILE -d $INSTALL_DIR
-
+  
             # Install dependencies
             cd $INSTALL_DIR
             pip install -r requirements.txt
-
-            # Restart the application
+  
+            # Assuming the Swagger UI setup is already installed and running
+            # Restart the application (Swagger UI server or the API server)
             sudo systemctl restart $APP_NAME
+  
+            # Optionally restart the web server for Swagger UI (adjust service name if needed)
+            sudo systemctl restart apache2  # or nginx, depending on your setup
+  
+            echo "Deployment complete for ${APP_NAME}."
             exit
           EOF
