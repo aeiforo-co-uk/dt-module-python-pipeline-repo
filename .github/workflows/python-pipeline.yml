@@ -251,13 +251,14 @@ jobs:
           cat /tmp/codeartifact_output.json  # Debug: View the full response
           jq -r '.asset' /tmp/codeartifact_output.json > calculator-package.zip
           ls -lh calculator-package.zip  # Debug - Ensure the artifact is downloaded
-
   
       # Step 7: Transfer the artifact to EC2
       - name: Transfer Artifact to EC2
         env:
           ARTIFACT_FILE: calculator-package.zip
         run: |
+          # Debug - List files in the current directory to confirm the artifact exists
+          ls -al
           echo "Transferring artifact: $ARTIFACT_FILE to EC2"
           scp -o StrictHostKeyChecking=no -i ${{ secrets.EC2_SSH_KEY }} $ARTIFACT_FILE ec2-user@${{ secrets.EC2_INSTANCE_IP }}:/home/ec2-user/
   
