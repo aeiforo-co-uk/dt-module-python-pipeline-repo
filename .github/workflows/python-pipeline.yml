@@ -209,6 +209,21 @@ jobs:
     needs: build_and_publish_package
     if: ${{ needs.build_and_publish_package.outputs.should_deploy == 'true' }}
     steps:
+      # Step 1: Checkout the code from GitHub
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Ensure the entire repository history is fetched
+
+      # Step 2: Debug - List files to confirm version.txt exists
+      - name: List Files in Repository
+        run: ls -al
+
+      # Step 3: Verify that version.txt exists and display its content
+      - name: Verify version.txt
+        run: cat ./version.txt
+
+      # Step 4: Configure AWS credentials
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -216,9 +231,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      - name: Verify version.txt
-        run: cat version.txt
-
+      # Step 5: Fetch the latest artifact from AWS CodeArtifact
       - name: Get Latest Artifact from CodeArtifact
         run: |
           aws codeartifact get-package-version-asset \
@@ -229,34 +242,36 @@ jobs:
             --package calculator-package \
             --package-version $(cat version.txt) \
             --asset-name calculator-package-$(cat version.txt).zip \
-            calculator-package.zip
+            --output file calculator-package.zip
 
+      # Step 6: Transfer the artifact to EC2
       - name: Transfer Artifact to EC2
         env:
           ARTIFACT_FILE: calculator-package.zip
         run: |
-          scp -i ${{ secrets.EC2_SSH_KEY }} $ARTIFACT_FILE ec2-user@${{ secrets.EC2_INSTANCE_IP }}:/home/ec2-user/
+          scp -o StrictHostKeyChecking=no -i ${{ secrets.EC2_SSH_KEY }} $ARTIFACT_FILE ec2-user@${{ secrets.EC2_INSTANCE_IP }}:/home/ec2-user/
 
+      # Step 7: Deploy the artifact on EC2
       - name: Deploy on EC2
         run: |
-          ssh -i ${{ secrets.EC2_SSH_KEY }} ec2-user@${{ secrets.EC2_INSTANCE_IP }} << EOF
-            # Variables for application-specific deployment
+          ssh -o StrictHostKeyChecking=no -i ${{ secrets.EC2_SSH_KEY }} ec2-user@${{ secrets.EC2_INSTANCE_IP }} << 'EOF'
+            # Variables for deployment
             APP_NAME="calculator-app"
             APP_VERSION=$(cat /home/ec2-user/version.txt)
             DEPLOY_DIR="/var/www/${APP_NAME}-${APP_VERSION}"
 
-            # Prepare deployment directory
+            # Create and set up deployment directory
             sudo mkdir -p $DEPLOY_DIR
             sudo chown ec2-user:ec2-user $DEPLOY_DIR
 
-            # Unzip and deploy
+            # Unzip and deploy the package
             unzip /home/ec2-user/calculator-package.zip -d $DEPLOY_DIR
             rm /home/ec2-user/calculator-package.zip
 
-            # Optional: Create or update a symlink for the latest version
+            # Update symlink to point to the latest deployment
             sudo ln -sfn $DEPLOY_DIR /var/www/${APP_NAME}
 
-            # Restart application (replace with your service name or restart command)
+            # Restart the application (replace with the correct service name)
             sudo systemctl restart ${APP_NAME}
 
             echo "Deployment complete for ${APP_NAME} version ${APP_VERSION}."
