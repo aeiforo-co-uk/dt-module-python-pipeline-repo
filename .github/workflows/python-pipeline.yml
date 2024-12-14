@@ -242,7 +242,8 @@ jobs:
             --package calculator-package \
             --package-version $(cat version.txt) \
             --asset-name calculator-package-$(cat version.txt).zip \
-            --output file calculator-package.zip
+            > calculator-package.zip
+
 
       # Step 6: Transfer the artifact to EC2
       - name: Transfer Artifact to EC2
