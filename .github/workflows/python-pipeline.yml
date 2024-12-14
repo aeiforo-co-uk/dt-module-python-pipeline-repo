@@ -235,6 +235,7 @@ jobs:
         run: |
           echo "Version in file: $(cat version.txt)"
   
+      # Step 6: Get Latest Artifact from CodeArtifact
       - name: Get Latest Artifact from CodeArtifact
         run: |
           aws codeartifact get-package-version-asset \
@@ -249,7 +250,7 @@ jobs:
             | jq -r '.asset' > calculator-package.zip
           ls -lh calculator-package.zip  # Debug - Ensure the artifact is downloaded
   
-      # Step 6: Transfer the artifact to EC2
+      # Step 7: Transfer the artifact to EC2
       - name: Transfer Artifact to EC2
         env:
           ARTIFACT_FILE: calculator-package.zip
@@ -257,7 +258,7 @@ jobs:
           echo "Transferring artifact: $ARTIFACT_FILE to EC2"
           scp -o StrictHostKeyChecking=no -i ${{ secrets.EC2_SSH_KEY }} $ARTIFACT_FILE ec2-user@${{ secrets.EC2_INSTANCE_IP }}:/home/ec2-user/
   
-      # Step 7: Deploy the artifact on EC2
+      # Step 8: Deploy the artifact on EC2
       - name: Deploy on EC2
         run: |
           ssh -o StrictHostKeyChecking=no -i ${{ secrets.EC2_SSH_KEY }} ec2-user@${{ secrets.EC2_INSTANCE_IP }} << 'EOF'
@@ -273,7 +274,7 @@ jobs:
             cd $INSTALL_DIR
             pip install -r requirements.txt
   
-            # Assuming the Swagger UI setup is already installed and running
+            # Assuming Swagger UI server or API server is already set up
             # Restart the application (Swagger UI server or the API server)
             sudo systemctl restart $APP_NAME
   
