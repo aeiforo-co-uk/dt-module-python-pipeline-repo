@@ -39,7 +39,7 @@ jobs:
           ref: ${{ github.ref }}
 
   unit_tests:
-    name: Unit Test & pytest 
+    name: Unit Test & pytest
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -139,7 +139,7 @@ jobs:
       - name: Check for Changes
         id: changes
         run: |
-          git fetch origin  development
+          git fetch origin development
           if git diff --exit-code HEAD origin/development -- . > /dev/null; then
             echo "Changes detected. Proceeding with version bump and deployment."
             echo "should_deploy=true" >> $GITHUB_ENV
@@ -147,7 +147,6 @@ jobs:
             echo "No changes detected. Skipping version bump and deployment."
             echo "should_deploy=false" >> $GITHUB_ENV
           fi
-
 
       - name: Set Deploy Output
         id: set_deploy_output
@@ -246,8 +245,9 @@ jobs:
             --package calculator-package \
             --package-version $(cat version.txt) \
             --asset-name "calculator-package-$(cat version.txt).zip" \
-            > calculator-package.zip
-
+            --output json \
+            | jq -r '.asset' > calculator-package.zip
+          ls -lh calculator-package.zip  # Debug - Ensure the artifact is downloaded
 
       # Step 6: Transfer the artifact to EC2
       - name: Transfer Artifact to EC2
@@ -262,22 +262,17 @@ jobs:
           ssh -o StrictHostKeyChecking=no -i ${{ secrets.EC2_SSH_KEY }} ec2-user@${{ secrets.EC2_INSTANCE_IP }} << 'EOF'
             # Variables for deployment
             APP_NAME="calculator-app"
-            APP_VERSION=$(cat /home/ec2-user/version.txt)
-            DEPLOY_DIR="/var/www/${APP_NAME}-${APP_VERSION}"
+            ARTIFACT_FILE="calculator-package.zip"
+            INSTALL_DIR="/home/ec2-user/$APP_NAME"
 
-            # Create and set up deployment directory
-            sudo mkdir -p $DEPLOY_DIR
-            sudo chown ec2-user:ec2-user $DEPLOY_DIR
+            # Unzip the package
+            unzip $ARTIFACT_FILE -d $INSTALL_DIR
 
-            # Unzip and deploy the package
-            unzip /home/ec2-user/calculator-package.zip -d $DEPLOY_DIR
-            rm /home/ec2-user/calculator-package.zip
+            # Install dependencies
+            cd $INSTALL_DIR
+            pip install -r requirements.txt
 
-            # Update symlink to point to the latest deployment
-            sudo ln -sfn $DEPLOY_DIR /var/www/${APP_NAME}
-
-            # Restart the application (replace with the correct service name)
-            sudo systemctl restart ${APP_NAME}
-
-            echo "Deployment complete for ${APP_NAME} version ${APP_VERSION}."
+            # Restart the application
+            sudo systemctl restart $APP_NAME
+            exit
           EOF
