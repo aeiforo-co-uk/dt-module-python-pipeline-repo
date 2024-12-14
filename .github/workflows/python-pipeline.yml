@@ -261,7 +261,7 @@ jobs:
           ls -al
           echo "Transferring artifact: $ARTIFACT_FILE to EC2"
           scp -o StrictHostKeyChecking=no -i ${{ secrets.EC2_SSH_KEY }} $ARTIFACT_FILE ec2-user@${{ secrets.EC2_INSTANCE_IP }}:/home/ec2-user/
-  
+
       # Step 8: Deploy the artifact on EC2
       - name: Deploy on EC2
         run: |
