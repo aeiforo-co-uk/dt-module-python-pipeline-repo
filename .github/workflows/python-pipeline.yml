@@ -260,6 +260,7 @@ jobs:
           # Debug - List files in the current directory to confirm the artifact exists
           ls -al
           echo "Transferring artifact: $ARTIFACT_FILE to EC2"
+          # Correct SCP command
           scp -o StrictHostKeyChecking=no -i ${{ secrets.EC2_SSH_KEY }} $ARTIFACT_FILE ec2-user@${{ secrets.EC2_INSTANCE_IP }}:/home/ec2-user/
 
       # Step 8: Deploy the artifact on EC2
