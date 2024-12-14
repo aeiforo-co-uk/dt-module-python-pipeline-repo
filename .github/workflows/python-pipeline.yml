@@ -265,8 +265,12 @@ jobs:
           echo "${{ secrets.EC2_SSH_KEY }}" > /tmp/private_key
           chmod 600 /tmp/private_key
       
-          # Correct SCP command
-          scp -o StrictHostKeyChecking=no -i /tmp/private_key $ARTIFACT_FILE ec2-user@${{ secrets.EC2_INSTANCE_IP }}:/home/ec2-user/
+          # Use the EC2 instance IP stored in GitHub Secrets
+          EC2_IP=${{ secrets.EC2_INSTANCE_IP }}
+          
+          # Correct SCP command with the valid EC2 IP
+          scp -o StrictHostKeyChecking=no -i /tmp/private_key $ARTIFACT_FILE ec2-user@$EC2_IP:/home/ec2-user/
+      
 
       # Step 8: Deploy the artifact on EC2
       - name: Deploy on EC2
