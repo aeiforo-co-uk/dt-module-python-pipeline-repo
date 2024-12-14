@@ -240,15 +240,18 @@ jobs:
         run: |
           aws codeartifact get-package-version-asset \
             --domain aeiforo \
-            --domain-owner 061039767866 \
+            --domain-owner *** \
             --repository pypi-store \
             --format pypi \
             --package calculator-package \
             --package-version $(cat version.txt) \
             --asset-name "calculator-package-$(cat version.txt).zip" \
             --output json \
-            | jq -r '.asset' > calculator-package.zip
+            | tee /tmp/codeartifact_output.json
+          cat /tmp/codeartifact_output.json  # Debug: View the full response
+          jq -r '.asset' /tmp/codeartifact_output.json > calculator-package.zip
           ls -lh calculator-package.zip  # Debug - Ensure the artifact is downloaded
+
   
       # Step 7: Transfer the artifact to EC2
       - name: Transfer Artifact to EC2
