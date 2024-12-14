@@ -232,6 +232,10 @@ jobs:
           aws-region: us-east-1
 
       # Step 5: Fetch the latest artifact from AWS CodeArtifact
+      - name: Debug Version
+        run: |
+          echo "Version in file: $(cat version.txt)"
+
       - name: Get Latest Artifact from CodeArtifact
         run: |
           aws codeartifact get-package-version-asset \
@@ -241,7 +245,7 @@ jobs:
             --format pypi \
             --package calculator-package \
             --package-version $(cat version.txt) \
-            --asset-name calculator-package-$(cat version.txt).zip \
+            --asset-name "calculator-package-$(cat version.txt).zip" \
             > calculator-package.zip
 
 
