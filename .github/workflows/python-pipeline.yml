@@ -220,7 +220,12 @@ jobs:
   
       # Step 3: Verify that version.txt exists and display its content
       - name: Verify version.txt
-        run: cat ./version.txt
+        run: |
+          if [ ! -f version.txt ]; then
+            echo "Error: version.txt not found!"
+            exit 1
+          fi
+          cat ./version.txt
   
       # Step 4: Configure AWS credentials
       - name: Configure AWS Credentials
@@ -238,18 +243,30 @@ jobs:
       # Step 6: Get Latest Artifact from CodeArtifact
       - name: Get Latest Artifact from CodeArtifact
         run: |
+          VERSION=$(cat version.txt | tr -d '\n')
+          ASSET_NAME="calculator-package-${VERSION}.zip"
+          echo "Fetching artifact: $ASSET_NAME"
+          
           aws codeartifact get-package-version-asset \
             --domain aeiforo \
             --domain-owner *** \
             --repository pypi-store \
             --format pypi \
             --package calculator-package \
-            --package-version $(cat version.txt) \
-            --asset-name "calculator-package-$(cat version.txt).zip" \
+            --package-version $VERSION \
+            --asset-name $ASSET_NAME \
             --output json \
             | tee /tmp/codeartifact_output.json
+
+          # Extract the asset
           cat /tmp/codeartifact_output.json  # Debug: View the full response
           jq -r '.asset' /tmp/codeartifact_output.json > calculator-package.zip
+
+          # Verify artifact download
+          if [ ! -s calculator-package.zip ]; then
+            echo "Error: Artifact download failed or file is empty."
+            exit 1
+          fi
           ls -lh calculator-package.zip  # Debug - Ensure the artifact is downloaded
   
       # Step 7: Transfer the artifact to EC2
@@ -275,25 +292,34 @@ jobs:
       # Step 8: Deploy the artifact on EC2
       - name: Deploy on EC2
         run: |
-          ssh -o StrictHostKeyChecking=no -i ${{ secrets.EC2_SSH_KEY }} ec2-user@${{ secrets.EC2_INSTANCE_IP }} << 'EOF'
+          echo "${{ secrets.EC2_SSH_KEY }}" > /tmp/private_key
+          chmod 600 /tmp/private_key
+          ssh -o StrictHostKeyChecking=no -i /tmp/private_key ec2-user@${{ secrets.EC2_INSTANCE_IP }} << 'EOF'
             # Variables for deployment
             APP_NAME="calculator-app"
             ARTIFACT_FILE="calculator-package.zip"
             INSTALL_DIR="/home/ec2-user/$APP_NAME"
   
+            # Create install directory if it doesn't exist
+            mkdir -p $INSTALL_DIR
+  
             # Unzip the package
-            unzip $ARTIFACT_FILE -d $INSTALL_DIR
+            unzip -o $ARTIFACT_FILE -d $INSTALL_DIR
   
             # Install dependencies
             cd $INSTALL_DIR
-            pip install -r requirements.txt
+            if [ -f requirements.txt ]; then
+              pip install -r requirements.txt
+            else
+              echo "Error: requirements.txt not found!"
+              exit 1
+            fi
   
-            # Assuming Swagger UI server or API server is already set up
-            # Restart the application (Swagger UI server or the API server)
+            # Restart the application
             sudo systemctl restart $APP_NAME
   
             # Optionally restart the web server for Swagger UI (adjust service name if needed)
-            sudo systemctl restart apache2  # or nginx, depending on your setup
+            sudo systemctl restart apache2 || sudo systemctl restart nginx
   
             echo "Deployment complete for ${APP_NAME}."
             exit
