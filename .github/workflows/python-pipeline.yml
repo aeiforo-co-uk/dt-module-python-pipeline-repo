@@ -85,6 +85,7 @@ jobs:
   coverage_and_sonarqube:
     name: SonarQube Analysis
     runs-on: ubuntu-latest
+    needs: unit_tests
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -182,12 +183,6 @@ jobs:
         run: |
           python setup.py sdist bdist_wheel
 
-      - name: Debug Build Output
-        if: env.should_deploy == 'true'
-        run: |
-          echo "Checking the dist directory..."
-          ls -l dist/
-
       - name: Configure AWS Credentials
         if: env.should_deploy == 'true'
         uses: aws-actions/configure-aws-credentials@v2
@@ -216,21 +211,6 @@ jobs:
         with:
           name: calculator-package
           path: dist/*
-
-      - name: Validate File Before S3 Upload
-        if: env.should_deploy == 'true'
-        run: |
-          if [ ! -f "dist/calculator-latest.tar.gz" ]; then
-            echo "Error: dist/calculator-latest.tar.gz does not exist."
-            exit 1
-          else
-            echo "File dist/calculator-latest.tar.gz exists. Proceeding to upload."
-          fi
-
-      - name: Upload Latest Version to S3
-        if: env.should_deploy == 'true'
-        run: |
-          aws s3 cp dist/calculator-latest.tar.gz s3://code-artifact-latest-version
 
           
   deploy_to_ec2:
