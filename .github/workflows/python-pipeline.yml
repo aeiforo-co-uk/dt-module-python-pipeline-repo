@@ -225,7 +225,7 @@ jobs:
   
       - name: Install calculator package
         run: |
-          pip install calculator==1.1.0 --extra-index-url https://pypi-store.aeiforo.amazonaws.com/simple \
+          pip install calculator==1.1.0 --extra-index-url https://pypi-store.aeiforo.amazonaws.com/calculator \
             --extra-index-url https://pypi-store.aeiforo.amazonaws.com/simple
          
   deploy_to_ec2_with_swagger:
@@ -263,7 +263,7 @@ jobs:
       - name: Download Latest Package from CodeArtifact
         run: |
           # Install the package from CodeArtifact repository
-          pip install calculator-package --extra-index-url https://pypi-store.aeiforo.amazonaws.com
+          pip install calculator-package --extra-index-url https://pypi-store.aeiforo.amazonaws.com/calculator
   
       - name: Deploy Package to EC2
         env:
