@@ -263,7 +263,7 @@ jobs:
       - name: Download Latest Package from CodeArtifact
         run: |
           # Install the package from CodeArtifact repository
-          pip install calculator-package --extra-index-url https://pypi-store.aeiforo.amazonaws.com/calculator
+          pip install calculator-package --extra-index-url https://aeiforo-***.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-store/simple/
   
       - name: Deploy Package to EC2
         env:
