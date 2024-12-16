@@ -98,18 +98,15 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      # Step 3: Install Dependencies
       - name: Install dependencies
         run: |
           pip install pytest pytest-cov coverage
-      
-      # Step 4: Run Tests with Coverage
+
       - name: Run Pytest with Coverage
         run: |
           pytest --cov=. --cov-report=xml
           coverage report
-      
-      # Step 5: SonarQube Code Scan
+
       - name: SonarQube Scan
         id: sonarqube_scan
         uses: sonarsource/sonarqube-scan-action@master
@@ -122,8 +119,7 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-      
-      # Step 6: Wait for SonarQube Quality Gate to pass
+
       - name: Checks quality gate
         uses: sonarsource/sonarqube-quality-gate-action@v1
         env:
@@ -220,43 +216,24 @@ jobs:
   
       - name: Install the latest version of the calculator-package from CodeArtifact repository
         run: |
-          # Install the latest version of the calculator-package from CodeArtifact repository
           pip install --upgrade calculator --extra-index-url https://aeiforo-***.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-store/simple/
-        
-      # New Step: Deploy Swagger UI to EC2 server
+      
       - name: Deploy Swagger UI to EC2 Server
         if: env.should_deploy == 'true'
         run: |
-          # SSH into EC2 instance and set up Swagger UI
           ssh -o StrictHostKeyChecking=no -i ${{ secrets.EC2_SSH_PRIVATE_KEY }} ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
-            # Update and install necessary tools
             sudo yum update -y
             sudo yum install -y nginx
-  
-            # Install Swagger UI using Docker or Nginx
             sudo docker pull swaggerapi/swagger-ui:latest
             sudo docker run -d -p 8080:8080 swaggerapi/swagger-ui:latest
-  
-            # You can also configure Nginx or Apache to serve multiple APIs here
-            # Example Nginx configuration
             sudo bash -c 'cat > /etc/nginx/conf.d/swagger.conf <<EOF
             server {
                 listen 80;
                 server_name localhost;
-  
-                location /api1 {
-                    proxy_pass http://localhost:8081;
-                }
-  
-                location /api2 {
-                    proxy_pass http://localhost:8082;
-                }
-  
-                location / {
-                    proxy_pass http://localhost:8080;
-                }
+                location /api1 { proxy_pass http://localhost:8081; }
+                location /api2 { proxy_pass http://localhost:8082; }
+                location / { proxy_pass http://localhost:8080; }
             }
             EOF'
-  
             sudo systemctl restart nginx
           EOF
