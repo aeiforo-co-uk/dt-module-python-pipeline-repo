@@ -220,8 +220,10 @@ jobs:
         - name: Add EC2 host to known_hosts
           run: |
             mkdir -p ~/.ssh
+            chmod 700 ~/.ssh
             ssh-keyscan -H $EC2_HOST >> ~/.ssh/known_hosts
-            chmod 600 ~/.ssh/known_hosts
+            chmod 644 ~/.ssh/known_hosts
+
 
         - name: SSH into EC2 and Deploy Application
           env:
