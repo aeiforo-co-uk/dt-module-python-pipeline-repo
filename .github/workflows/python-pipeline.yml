@@ -211,11 +211,21 @@ jobs:
         with:
           name: calculator-package
           path: dist/*
-      - name: Test Package Installation
-        if: env.should_deploy == 'true'
+          
+      - name: List Available Package Versions
+        run: |
+          aws codeartifact list-package-versions \
+            --domain aeiforo \
+            --domain-owner 061039767866 \
+            --repository pypi-store \
+            --format pypi \
+            --package calculator
+
+      # Install the package
+      - name: Install calculator package
         run: |
           pip install calculator==$(cat version.txt) \
-            --extra-index-url https://pypi-store.aeiforo.amazonaws.com --verbose
+            --extra-index-url https://pypi-store.aeiforo.amazonaws.com
           
   deploy_to_ec2_with_swagger:
     name: Deploy to EC2 with Swagger UI
