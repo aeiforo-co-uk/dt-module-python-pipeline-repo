@@ -205,6 +205,7 @@ jobs:
         if: env.should_deploy == 'true'
         run: |
           twine upload --repository codeartifact --verbose dist/*
+
   
       - name: Upload Package Artifact to AWS
         if: env.should_deploy == 'true'
@@ -226,6 +227,7 @@ jobs:
         run: |
           pip install calculator==$(cat version.txt) \
             --extra-index-url https://pypi-store.aeiforo.amazonaws.com
+
 
           
   deploy_to_ec2_with_swagger:
