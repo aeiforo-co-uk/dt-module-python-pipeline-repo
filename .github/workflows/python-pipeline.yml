@@ -255,8 +255,11 @@ jobs:
         run: |
           VERSION=$(cat version.txt | tr -d '\n')
           echo "Fetching artifact for version: $VERSION"
-  
+      
           # Fetch the artifact
+          ASSET_NAME="calculator-package-${VERSION}.zip"
+          echo "Expected asset name: $ASSET_NAME"
+          
           aws codeartifact get-package-version-asset \
             --domain aeiforo \
             --domain-owner *** \
@@ -264,21 +267,21 @@ jobs:
             --format pypi \
             --package calculator-package \
             --package-version $VERSION \
-            --asset calculator-package-${VERSION}.zip \
+            --asset $ASSET_NAME \
             --output json \
             | tee /tmp/codeartifact_output.json
-  
+      
           # Extract the artifact
           cat /tmp/codeartifact_output.json  # Debug: View the full response
           jq -r '.asset' /tmp/codeartifact_output.json > calculator-package.zip
-  
+      
           # Verify artifact download
           if [ ! -s calculator-package.zip ]; then
             echo "Error: Artifact download failed or file is empty."
             exit 1
           fi
           ls -lh calculator-package.zip  # Debug - Ensure the artifact is downloaded
-  
+
       # Step 7: Transfer the artifact to EC2
       - name: Transfer Artifact to EC2
         env:
