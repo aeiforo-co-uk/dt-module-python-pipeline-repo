@@ -244,9 +244,9 @@ jobs:
       - name: Get Latest Artifact from CodeArtifact
         run: |
           VERSION=$(cat version.txt | tr -d '\n')
-          ASSET_NAME="calculator-package-${VERSION}.zip"
-          echo "Fetching artifact: $ASSET_NAME"
-          
+          echo "Fetching artifact for version: $VERSION"
+  
+          # Fetch the artifact
           aws codeartifact get-package-version-asset \
             --domain aeiforo \
             --domain-owner *** \
@@ -254,14 +254,14 @@ jobs:
             --format pypi \
             --package calculator-package \
             --package-version $VERSION \
-            --asset-name $ASSET_NAME \
+            --asset calculator-package-${VERSION}.zip \
             --output json \
             | tee /tmp/codeartifact_output.json
-
-          # Extract the asset
+  
+          # Extract the artifact
           cat /tmp/codeartifact_output.json  # Debug: View the full response
           jq -r '.asset' /tmp/codeartifact_output.json > calculator-package.zip
-
+  
           # Verify artifact download
           if [ ! -s calculator-package.zip ]; then
             echo "Error: Artifact download failed or file is empty."
@@ -277,18 +277,17 @@ jobs:
           # Debug - List files in the current directory to confirm the artifact exists
           ls -al
           echo "Transferring artifact: $ARTIFACT_FILE to EC2"
-          
+  
           # Ensure the private key is accessible and stored in GitHub Secrets as EC2_SSH_KEY
           echo "${{ secrets.EC2_SSH_KEY }}" > /tmp/private_key
           chmod 600 /tmp/private_key
-      
+  
           # Use the EC2 instance IP stored in GitHub Secrets
           EC2_IP=${{ secrets.EC2_INSTANCE_IP }}
-          
-          # Correct SCP command with the valid EC2 IP
+  
+          # Transfer the artifact using SCP
           scp -o StrictHostKeyChecking=no -i /tmp/private_key $ARTIFACT_FILE ec2-user@$EC2_IP:/home/ec2-user/
-      
-
+  
       # Step 8: Deploy the artifact on EC2
       - name: Deploy on EC2
         run: |
