@@ -144,7 +144,8 @@ jobs:
           else
             echo "No changes detected. Skipping version bump and deployment."
             echo "should_deploy=false" >> $GITHUB_ENV
-  
+          fi
+          
       - name: Set Deploy Output
         id: set_deploy_output
         run: echo "::set-output name=should_deploy::${{ env.should_deploy }}"
