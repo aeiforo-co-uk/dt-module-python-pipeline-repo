@@ -58,10 +58,24 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
+      - name: Check for Unittest files
+        run: |
+          if [ -z "$(find tests -type f -name 'test_*.py' -exec grep -l 'unittest' {} +)" ]; then
+            echo "No Unittest files found."
+            exit 1
+          fi
+
       - name: Run unit tests
         env:
           PYTHONPATH: ./src
         run: python -m unittest discover tests
+
+      - name: Check for Pytest files
+        run: |
+          if [ -z "$(find tests -type f -name 'test_*.py' -exec grep -l 'pytest' {} +)" ]; then
+            echo "No Pytest files found."
+            exit 1
+          fi
 
       - name: Run pytest
         env:
@@ -83,15 +97,18 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
+      # Step 3: Install Dependencies
       - name: Install dependencies
         run: |
           pip install pytest pytest-cov coverage
-
+      
+      # Step 4: Run Tests with Coverage
       - name: Run Pytest with Coverage
         run: |
           pytest --cov=. --cov-report=xml
           coverage report
-
+      
+      # Step 5: SonarQube Code Scan
       - name: SonarQube Scan
         id: sonarqube_scan
         uses: sonarsource/sonarqube-scan-action@master
@@ -104,15 +121,19 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-
+      
+      # Step 6: Wait for SonarQube Quality Gate to pass
       - name: Checks quality gate
         uses: sonarsource/sonarqube-quality-gate-action@v1
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
+
   build_and_publish_package:
     name: Build and Publish Package
     runs-on: ubuntu-latest
+    # outputs:
+    #   should_deploy: ${{ steps.set_deploy_output.outputs.should_deploy }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -125,16 +146,45 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
+      - name: Check for Changes
+        id: changes
+        run: |
+          git fetch origin development
+          if git diff --exit-code HEAD origin/development -- . > /dev/null; then
+            echo "Changes detected. Proceeding with version bump and deployment."
+            echo "should_deploy=true" >> $GITHUB_ENV
+          else
+            echo "No changes detected. Skipping version bump and deployment."
+            echo "should_deploy=false" >> $GITHUB_ENV
+          fi
+
+      - name: Set Deploy Output
+        id: set_deploy_output
+        run: echo "::set-output name=should_deploy::${{ env.should_deploy }}"
+
+      - name: Increment Version (if needed)
+        if: env.should_deploy == 'true'
+        run: |
+          python bump_version.py
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://${{ secrets.MY_GITHUB_TOKEN }}@github.com/${{ env.REPO_NAME }}.git
+          git commit -am "Bump version to $(cat version.txt)"
+          git push
+
       - name: Install Build Tools
+        if: env.should_deploy == 'true'
         run: |
           python -m pip install --upgrade pip
           pip install setuptools wheel twine
 
       - name: Build Python Package
+        if: env.should_deploy == 'true'
         run: |
           python setup.py sdist bdist_wheel
 
       - name: Configure AWS Credentials
+        if: env.should_deploy == 'true'
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -142,6 +192,7 @@ jobs:
           aws-region: us-east-1
 
       - name: Login to AWS CodeArtifact
+        if: env.should_deploy == 'true'
         run: |
           aws codeartifact login \
             --tool twine \
@@ -150,127 +201,135 @@ jobs:
             --domain-owner 061039767866
 
       - name: Publish Package
+        if: env.should_deploy == 'true'
         run: |
           twine upload --repository codeartifact --verbose dist/*
 
+      - name: Upload Package Artifact to AWS
+        if: env.should_deploy == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: calculator-package
+          path: dist/*
+
   deploy_to_ec2:
-    name: Deploy to EC2
-    runs-on: ubuntu-latest
-    needs: build_and_publish_package
-    if: ${{ needs.build_and_publish_package.outputs.should_deploy == 'true' }}
-    steps:
-      # Step 1: Checkout the code from GitHub
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Ensure the entire repository history is fetched
-  
-      # Step 2: Debug - List files to confirm version.txt exists
-      - name: List Files in Repository
-        run: ls -al
-  
-      # Step 3: Verify that version.txt exists and display its content
-      - name: Verify version.txt
-        run: |
-          if [ ! -f version.txt ]; then
-            echo "Error: version.txt not found!"
-            exit 1
-          fi
-          cat ./version.txt
-  
-      # Step 4: Configure AWS credentials
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-  
-      # Step 5: Fetch the latest artifact from AWS CodeArtifact
-      - name: Debug Version
-        run: |
-          echo "Version in file: $(cat version.txt)"
-  
-      # Step 6: Get Latest Artifact from CodeArtifact
-      - name: Get Latest Artifact from CodeArtifact
-        run: |
-          VERSION=$(cat version.txt | tr -d '\n')
-          echo "Fetching artifact for version: $VERSION"
-  
-          # Fetch the artifact
-          aws codeartifact get-package-version-asset \
-            --domain aeiforo \
-            --domain-owner *** \
-            --repository pypi-store \
-            --format pypi \
-            --package calculator-package \
-            --package-version $VERSION \
-            --asset calculator-package-${VERSION}.zip \
-            --output json \
-            | tee /tmp/codeartifact_output.json
-  
-          # Extract the artifact
-          cat /tmp/codeartifact_output.json  # Debug: View the full response
-          jq -r '.asset' /tmp/codeartifact_output.json > calculator-package.zip
-  
-          # Verify artifact download
-          if [ ! -s calculator-package.zip ]; then
-            echo "Error: Artifact download failed or file is empty."
-            exit 1
-          fi
-          ls -lh calculator-package.zip  # Debug - Ensure the artifact is downloaded
-  
-      # Step 7: Transfer the artifact to EC2
-      - name: Transfer Artifact to EC2
-        env:
-          ARTIFACT_FILE: calculator-package.zip
-        run: |
-          # Debug - List files in the current directory to confirm the artifact exists
-          ls -al
-          echo "Transferring artifact: $ARTIFACT_FILE to EC2"
-  
-          # Ensure the private key is accessible and stored in GitHub Secrets as EC2_SSH_KEY
-          echo "${{ secrets.EC2_SSH_KEY }}" > /tmp/private_key
-          chmod 600 /tmp/private_key
-  
-          # Use the EC2 instance IP stored in GitHub Secrets
-          EC2_IP=${{ secrets.EC2_INSTANCE_IP }}
-  
-          # Transfer the artifact using SCP
-          scp -o StrictHostKeyChecking=no -i /tmp/private_key $ARTIFACT_FILE ec2-user@$EC2_IP:/home/ec2-user/
-  
-      # Step 8: Deploy the artifact on EC2
-      - name: Deploy on EC2
-        run: |
-          echo "${{ secrets.EC2_SSH_KEY }}" > /tmp/private_key
-          chmod 600 /tmp/private_key
-          ssh -o StrictHostKeyChecking=no -i /tmp/private_key ec2-user@${{ secrets.EC2_INSTANCE_IP }} << 'EOF'
-            # Variables for deployment
-            APP_NAME="calculator-app"
-            ARTIFACT_FILE="calculator-package.zip"
-            INSTALL_DIR="/home/ec2-user/$APP_NAME"
-  
-            # Create install directory if it doesn't exist
-            mkdir -p $INSTALL_DIR
-  
-            # Unzip the package
-            unzip -o $ARTIFACT_FILE -d $INSTALL_DIR
-  
-            # Install dependencies
-            cd $INSTALL_DIR
-            if [ -f requirements.txt ]; then
-              pip install -r requirements.txt
-            else
-              echo "Error: requirements.txt not found!"
+      name: Deploy to EC2
+      runs-on: ubuntu-latest
+      needs: build_and_publish_package
+      if: ${{ needs.build_and_publish_package.outputs.should_deploy == 'true' }}
+      steps:
+        # Step 1: Checkout the code from GitHub
+        - name: Checkout Code
+          uses: actions/checkout@v4
+          with:
+            fetch-depth: 0  # Ensure the entire repository history is fetched
+    
+        # Step 2: Debug - List files to confirm version.txt exists
+        - name: List Files in Repository
+          run: ls -al
+    
+        # Step 3: Verify that version.txt exists and display its content
+        - name: Verify version.txt
+          run: |
+            if [ ! -f version.txt ]; then
+              echo "Error: version.txt not found!"
               exit 1
             fi
-  
-            # Restart the application
-            sudo systemctl restart $APP_NAME
-  
-            # Optionally restart the web server for Swagger UI (adjust service name if needed)
-            sudo systemctl restart apache2 || sudo systemctl restart nginx
-  
-            echo "Deployment complete for ${APP_NAME}."
-            exit
-          EOF
+            cat ./version.txt
+    
+        # Step 4: Configure AWS credentials
+        - name: Configure AWS Credentials
+          uses: aws-actions/configure-aws-credentials@v2
+          with:
+            aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+            aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            aws-region: us-east-1
+    
+        # Step 5: Fetch the latest artifact from AWS CodeArtifact
+        - name: Debug Version
+          run: |
+            echo "Version in file: $(cat version.txt)"
+    
+        # Step 6: Get Latest Artifact from CodeArtifact
+        - name: Get Latest Artifact from CodeArtifact
+          run: |
+            VERSION=$(cat version.txt | tr -d '\n')
+            echo "Fetching artifact for version: $VERSION"
+    
+            # Fetch the artifact
+            aws codeartifact get-package-version-asset \
+              --domain aeiforo \
+              --domain-owner *** \
+              --repository pypi-store \
+              --format pypi \
+              --package calculator-package \
+              --package-version $VERSION \
+              --asset calculator-package-${VERSION}.zip \
+              --output json \
+              | tee /tmp/codeartifact_output.json
+    
+            # Extract the artifact
+            cat /tmp/codeartifact_output.json  # Debug: View the full response
+            jq -r '.asset' /tmp/codeartifact_output.json > calculator-package.zip
+    
+            # Verify artifact download
+            if [ ! -s calculator-package.zip ]; then
+              echo "Error: Artifact download failed or file is empty."
+              exit 1
+            fi
+            ls -lh calculator-package.zip  # Debug - Ensure the artifact is downloaded
+    
+        # Step 7: Transfer the artifact to EC2
+        - name: Transfer Artifact to EC2
+          env:
+            ARTIFACT_FILE: calculator-package.zip
+          run: |
+            # Debug - List files in the current directory to confirm the artifact exists
+            ls -al
+            echo "Transferring artifact: $ARTIFACT_FILE to EC2"
+    
+            # Ensure the private key is accessible and stored in GitHub Secrets as EC2_SSH_KEY
+            echo "${{ secrets.EC2_SSH_KEY }}" > /tmp/private_key
+            chmod 600 /tmp/private_key
+    
+            # Use the EC2 instance IP stored in GitHub Secrets
+            EC2_IP=${{ secrets.EC2_INSTANCE_IP }}
+    
+            # Transfer the artifact using SCP
+            scp -o StrictHostKeyChecking=no -i /tmp/private_key $ARTIFACT_FILE ec2-user@$EC2_IP:/home/ec2-user/
+    
+        # Step 8: Deploy the artifact on EC2
+        - name: Deploy on EC2
+          run: |
+            echo "${{ secrets.EC2_SSH_KEY }}" > /tmp/private_key
+            chmod 600 /tmp/private_key
+            ssh -o StrictHostKeyChecking=no -i /tmp/private_key ec2-user@${{ secrets.EC2_INSTANCE_IP }} << 'EOF'
+              # Variables for deployment
+              APP_NAME="calculator-app"
+              ARTIFACT_FILE="calculator-package.zip"
+              INSTALL_DIR="/home/ec2-user/$APP_NAME"
+    
+              # Create install directory if it doesn't exist
+              mkdir -p $INSTALL_DIR
+    
+              # Unzip the package
+              unzip -o $ARTIFACT_FILE -d $INSTALL_DIR
+    
+              # Install dependencies
+              cd $INSTALL_DIR
+              if [ -f requirements.txt ]; then
+                pip install -r requirements.txt
+              else
+                echo "Error: requirements.txt not found!"
+                exit 1
+              fi
+    
+              # Restart the application
+              sudo systemctl restart $APP_NAME
+    
+              # Optionally restart the web server for Swagger UI (adjust service name if needed)
+              sudo systemctl restart apache2 || sudo systemctl restart nginx
+    
+              echo "Deployment complete for ${APP_NAME}."
+              exit
+            EOF
