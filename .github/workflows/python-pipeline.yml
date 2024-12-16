@@ -157,12 +157,19 @@ jobs:
     name: Deploy to EC2
     runs-on: ubuntu-latest
     needs: build_and_publish_package
+    if: ${{ needs.build_and_publish_package.outputs.should_deploy == 'true' }}
     steps:
+      # Step 1: Checkout the code from GitHub
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-
+          fetch-depth: 0  # Ensure the entire repository history is fetched
+  
+      # Step 2: Debug - List files to confirm version.txt exists
+      - name: List Files in Repository
+        run: ls -al
+  
+      # Step 3: Verify that version.txt exists and display its content
       - name: Verify version.txt
         run: |
           if [ ! -f version.txt ]; then
@@ -170,35 +177,100 @@ jobs:
             exit 1
           fi
           cat ./version.txt
-
+  
+      # Step 4: Configure AWS credentials
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
-
+  
+      # Step 5: Fetch the latest artifact from AWS CodeArtifact
+      - name: Debug Version
+        run: |
+          echo "Version in file: $(cat version.txt)"
+  
+      # Step 6: Get Latest Artifact from CodeArtifact
+      - name: Get Latest Artifact from CodeArtifact
+        run: |
+          VERSION=$(cat version.txt | tr -d '\n')
+          echo "Fetching artifact for version: $VERSION"
+  
+          # Fetch the artifact
+          aws codeartifact get-package-version-asset \
+            --domain aeiforo \
+            --domain-owner *** \
+            --repository pypi-store \
+            --format pypi \
+            --package calculator-package \
+            --package-version $VERSION \
+            --asset calculator-package-${VERSION}.zip \
+            --output json \
+            | tee /tmp/codeartifact_output.json
+  
+          # Extract the artifact
+          cat /tmp/codeartifact_output.json  # Debug: View the full response
+          jq -r '.asset' /tmp/codeartifact_output.json > calculator-package.zip
+  
+          # Verify artifact download
+          if [ ! -s calculator-package.zip ]; then
+            echo "Error: Artifact download failed or file is empty."
+            exit 1
+          fi
+          ls -lh calculator-package.zip  # Debug - Ensure the artifact is downloaded
+  
+      # Step 7: Transfer the artifact to EC2
       - name: Transfer Artifact to EC2
         env:
-          ARTIFACT_FILE: dist/calculator-package-$(cat version.txt).zip
+          ARTIFACT_FILE: calculator-package.zip
         run: |
+          # Debug - List files in the current directory to confirm the artifact exists
+          ls -al
+          echo "Transferring artifact: $ARTIFACT_FILE to EC2"
+  
+          # Ensure the private key is accessible and stored in GitHub Secrets as EC2_SSH_KEY
           echo "${{ secrets.EC2_SSH_KEY }}" > /tmp/private_key
           chmod 600 /tmp/private_key
-          scp -o StrictHostKeyChecking=no -i /tmp/private_key $ARTIFACT_FILE ec2-user@${{ secrets.EC2_INSTANCE_IP }}:/home/ec2-user/
-
+  
+          # Use the EC2 instance IP stored in GitHub Secrets
+          EC2_IP=${{ secrets.EC2_INSTANCE_IP }}
+  
+          # Transfer the artifact using SCP
+          scp -o StrictHostKeyChecking=no -i /tmp/private_key $ARTIFACT_FILE ec2-user@$EC2_IP:/home/ec2-user/
+  
+      # Step 8: Deploy the artifact on EC2
       - name: Deploy on EC2
         run: |
           echo "${{ secrets.EC2_SSH_KEY }}" > /tmp/private_key
           chmod 600 /tmp/private_key
           ssh -o StrictHostKeyChecking=no -i /tmp/private_key ec2-user@${{ secrets.EC2_INSTANCE_IP }} << 'EOF'
-            APP_DIR="/home/ec2-user/calculator-app"
-            ARTIFACT_FILE="/home/ec2-user/calculator-package-$(cat version.txt).zip"
-            mkdir -p $APP_DIR
-            unzip -o $ARTIFACT_FILE -d $APP_DIR
-            cd $APP_DIR
+            # Variables for deployment
+            APP_NAME="calculator-app"
+            ARTIFACT_FILE="calculator-package.zip"
+            INSTALL_DIR="/home/ec2-user/$APP_NAME"
+  
+            # Create install directory if it doesn't exist
+            mkdir -p $INSTALL_DIR
+  
+            # Unzip the package
+            unzip -o $ARTIFACT_FILE -d $INSTALL_DIR
+  
+            # Install dependencies
+            cd $INSTALL_DIR
             if [ -f requirements.txt ]; then
               pip install -r requirements.txt
+            else
+              echo "Error: requirements.txt not found!"
+              exit 1
             fi
-            sudo systemctl restart calculator-app
-            sudo systemctl restart nginx
+  
+            # Restart the application
+            sudo systemctl restart $APP_NAME
+  
+            # Optionally restart the web server for Swagger UI (adjust service name if needed)
+            sudo systemctl restart apache2 || sudo systemctl restart nginx
+  
+            echo "Deployment complete for ${APP_NAME}."
+            exit
           EOF
