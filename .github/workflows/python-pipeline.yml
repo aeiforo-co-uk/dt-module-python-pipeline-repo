@@ -142,10 +142,10 @@ jobs:
           git fetch origin development
           if git diff --exit-code HEAD origin/development -- . > /dev/null; then
             echo "Changes detected. Proceeding with version bump and deployment."
-            echo "should_deploy=false" >> $GITHUB_ENV
+            echo "should_deploy=true" >> $GITHUB_ENV
           else
             echo "No changes detected. Skipping version bump and deployment."
-            echo "should_deploy=true" >> $GITHUB_ENV
+            echo "should_deploy=false" >> $GITHUB_ENV
           fi
 
       - name: Set Deploy Output
