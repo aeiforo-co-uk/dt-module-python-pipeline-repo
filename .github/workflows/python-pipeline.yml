@@ -210,7 +210,12 @@ jobs:
         with:
           name: calculator-package
           path: dist/*
-
+          
+      - name: Upload Latest Version to S3
+        if: env.should_deploy == 'true'
+        run: |
+          aws s3 cp dist/calculator-latest.tar.gz s3://code-artifact-latest-version
+          
   deploy_to_ec2:
       name: Deploy to EC2
       runs-on: ubuntu-latest
