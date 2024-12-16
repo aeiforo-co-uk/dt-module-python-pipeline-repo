@@ -137,16 +137,17 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Check for Changes
-        id: changes
+        id: check_changes
         run: |
           git fetch origin development
-          if git diff --exit-code HEAD origin/development -- . > /dev/null; then
-            echo "Changes detected. Proceeding with version bump and deployment."
-            echo "should_deploy=true" >> $GITHUB_ENV
+          if git diff --quiet HEAD origin/development -- .; then
+            echo "No changes detected."
+            echo "::set-output name=should_deploy::false"
           else
-            echo "No changes detected. Skipping version bump and deployment."
-            echo "should_deploy=false" >> $GITHUB_ENV
-          fi
+            echo "Changes detected."
+            echo "::set-output name=should_deploy::true"
+        continue-on-error: false  # Ensure proper failure propagation for debugging
+
 
       - name: Set Deploy Output
         id: set_deploy_output
