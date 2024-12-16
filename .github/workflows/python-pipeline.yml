@@ -226,7 +226,8 @@ jobs:
       - name: Install calculator package
         run: |
           pip install calculator==$(cat version.txt) \
-            --extra-index-url https://pypi-store.aeiforo.amazonaws.com
+            --extra-index-url https://pypi-store.aeiforo.amazonaws.com/simple
+
 
 
           
