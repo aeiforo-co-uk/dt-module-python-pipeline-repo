@@ -132,8 +132,7 @@ jobs:
   build_and_publish_package:
     name: Build and Publish Package
     runs-on: ubuntu-latest
-    # outputs:
-    #   should_deploy: ${{ steps.set_deploy_output.outputs.should_deploy }}
+    needs: coverage_and_sonarqube
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
