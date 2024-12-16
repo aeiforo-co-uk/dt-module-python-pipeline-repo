@@ -159,8 +159,8 @@ jobs:
   
       - name: Set Deploy Output
         id: set_deploy_output
-        run: echo "::set-output name=should_deploy::${{ env.should_deploy }}"
-  
+        run: echo "should_deploy=${{ env.should_deploy }}" >> $GITHUB_ENV
+
       - name: Increment Version (if needed)
         if: env.should_deploy == 'true'
         run: |
