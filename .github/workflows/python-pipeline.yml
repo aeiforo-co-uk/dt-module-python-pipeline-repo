@@ -200,12 +200,68 @@ jobs:
           name: calculator-package
           path: dist/*
   
-      - name: Deploy to EC2
-        if: env.should_deploy == 'true'
-        run: |
-          echo "${{ secrets.EC2_KEY }}" > ec2_key.pem
-          chmod 600 ec2_key.pem
-          scp -o StrictHostKeyChecking=no -i ec2_key.pem dist/*.tar.gz ec2-user@${{ secrets.EC2_PUBLIC_IP }}:/home/ec2-user/
-          ssh -o StrictHostKeyChecking=no -i ec2_key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
-          bash deploy_application.sh "${{ env.APP_NAME }}" "${{ env.SWAGGER_UI_PORT }}"
-          EOF
+  deploy_to_ec2:
+      name: Deploy to EC2 and Setup Swagger UI
+      needs: build_and_publish_package
+      runs-on: ubuntu-latest
+      steps:
+        - name: Download Package Artifact
+          uses: actions/download-artifact@v4
+          with:
+            name: calculator-package
+  
+        - name: Configure AWS Credentials
+          uses: aws-actions/configure-aws-credentials@v2
+          with:
+            aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+            aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            aws-region: us-east-1
+  
+        - name: SSH into EC2 and Deploy Application
+          env:
+            EC2_HOST: ${{ secrets.EC2_HOST }}
+            EC2_USER: ${{ secrets.EC2_USER }}
+            EC2_KEY: ${{ secrets.EC2_KEY }}
+          run: |
+            echo "$EC2_KEY" > private_key.pem
+            chmod 600 private_key.pem
+            scp -i private_key.pem dist/* $EC2_USER@$EC2_HOST:/tmp/
+  
+            ssh -i private_key.pem $EC2_USER@$EC2_HOST << EOF
+              sudo mkdir -p /var/www/myapp
+              sudo cp /tmp/* /var/www/myapp/
+  
+              # Install Swagger UI
+              if [ ! -d "/var/www/swagger-ui" ]; then
+                sudo mkdir -p /var/www/swagger-ui
+                sudo wget https://github.com/swagger-api/swagger-ui/archive/refs/heads/main.zip -O /tmp/swagger-ui.zip
+                sudo unzip /tmp/swagger-ui.zip -d /var/www/
+                sudo mv /var/www/swagger-ui-main /var/www/swagger-ui
+              fi
+  
+              # Configure Nginx for Multiple Applications
+              sudo tee /etc/nginx/sites-available/myapp << END
+              server {
+                listen 80;
+                server_name ${EC2_HOST};
+  
+                location /swagger {
+                  root /var/www/swagger-ui/dist;
+                  index index.html;
+                }
+  
+                location /myapp {
+                  root /var/www/myapp;
+                  index index.html;
+                  try_files $uri $uri/ =404;
+                }
+              }
+              END
+  
+              sudo ln -sf /etc/nginx/sites-available/myapp /etc/nginx/sites-enabled/
+              sudo nginx -t && sudo systemctl reload nginx
+            EOF
+  
+        - name: Confirm Deployment
+          run: echo "Swagger UI and application deployed successfully."
+
