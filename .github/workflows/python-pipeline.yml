@@ -216,7 +216,13 @@ jobs:
             aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
             aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
             aws-region: us-east-1
-  
+            
+        - name: Add EC2 host to known_hosts
+          run: |
+            mkdir -p ~/.ssh
+            ssh-keyscan -H $EC2_HOST >> ~/.ssh/known_hosts
+            chmod 600 ~/.ssh/known_hosts
+
         - name: SSH into EC2 and Deploy Application
           env:
             EC2_HOST: ${{ secrets.EC2_HOST }}
