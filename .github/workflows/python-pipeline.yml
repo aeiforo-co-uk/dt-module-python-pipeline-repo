@@ -133,7 +133,6 @@ jobs:
   build_and_publish_package:
     name: Build and Publish Package
     runs-on: ubuntu-latest
-    # needs: coverage_and_sonarqube
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -156,13 +155,11 @@ jobs:
           else
             echo "Changes detected. Proceeding with version bump and deployment."
             echo "should_deploy=false" >> $GITHUB_ENV
-          fi
-
   
       - name: Set Deploy Output
         id: set_deploy_output
         run: echo "should_deploy=${{ env.should_deploy }}" >> $GITHUB_ENV
-
+  
       - name: Increment Version (if needed)
         if: env.should_deploy == 'true'
         run: |
@@ -205,7 +202,6 @@ jobs:
         if: env.should_deploy == 'true'
         run: |
           twine upload --repository codeartifact --verbose dist/*
-
   
       - name: Upload Package Artifact to AWS
         if: env.should_deploy == 'true'
@@ -223,94 +219,47 @@ jobs:
             --format pypi \
             --package calculator
   
-      - name: Install calculator package
-        run: |
-          pip install calculator==1.1.0 --extra-index-url https://pypi-store.aeiforo.amazonaws.com/calculator \
-            --extra-index-url https://pypi-store.aeiforo.amazonaws.com/simple
-         
-  deploy_to_ec2_with_swagger:
-    name: Deploy to EC2 with Swagger UI
-    runs-on: ubuntu-latest
-    needs: build_and_publish_package  # Trigger after the package is built and published
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-  
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-  
-      - name: Authenticate with AWS CodeArtifact
-        run: |
-          # Authenticate with AWS CodeArtifact to use pip
-          aws codeartifact login \
-            --tool pip \
-            --repository pypi-store \
-            --domain aeiforo \
-            --domain-owner 061039767866
-  
-      - name: List Available Packages in CodeArtifact
-        run: |
-          # Check if the calculator-package exists in CodeArtifact
-          aws codeartifact list-packages \
-            --repository pypi-store \
-            --domain aeiforo \
-            --domain-owner 061039767866
-  
-      - name: Download Latest Package from CodeArtifact
+      - name: Install the latest version of the calculator-package from CodeArtifact repository
         run: |
           # Install the latest version of the calculator-package from CodeArtifact repository
-          pip install --upgrade calculator-package --extra-index-url https://aeiforo-061039767866.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-store/simple/
-  
-      - name: Deploy Package to EC2
-        env:
-          EC2_USER: "ec2-user"
-          EC2_HOST: ${{ secrets.EC2_HOST }}
-          EC2_KEY: ${{ secrets.EC2_PRIVATE_KEY }}
+          pip install --upgrade calculator --extra-index-url https://aeiforo-***.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-store/simple/
+      
+        
+      # New Step: Deploy Swagger UI to EC2 server
+      - name: Deploy Swagger UI to EC2 Server
+        if: env.should_deploy == 'true'
         run: |
-          # Save the private key to a file
-          echo "${EC2_KEY}" > ec2-key.pem
-          chmod 600 ec2-key.pem
+          # SSH into EC2 instance and set up Swagger UI
+          ssh -o StrictHostKeyChecking=no -i ${{ secrets.EC2_SSH_PRIVATE_KEY }} ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
+            # Update and install necessary tools
+            sudo yum update -y
+            sudo yum install -y nginx
   
-          # Copy package and deployment scripts to EC2
-          scp -i ec2-key.pem -r . $EC2_USER@$EC2_HOST:/home/ec2-user/deploy/
+            # Install Swagger UI using Docker or Nginx
+            sudo docker pull swaggerapi/swagger-ui:latest
+            sudo docker run -d -p 8080:8080 swaggerapi/swagger-ui:latest
   
-          # Deploy on EC2
-          ssh -i ec2-key.pem $EC2_USER@$EC2_HOST << 'EOF'
-            # Update and install the latest version of the package
-            cd /home/ec2-user/deploy
-            pip install --upgrade calculator-package
-  
-            # Install Swagger UI
-            if [ ! -d "/var/www/swagger-ui" ]; then
-              sudo mkdir -p /var/www/swagger-ui
-              sudo chown $USER:$USER /var/www/swagger-ui
-              git clone https://github.com/swagger-api/swagger-ui.git /var/www/swagger-ui
-              cd /var/www/swagger-ui
-              npm install
-              npm run build
-            fi
-  
-            # Configure Nginx to Serve Swagger UI
-            if [ ! -f "/etc/nginx/sites-available/swagger" ]; then
-              echo "server {
+            # You can also configure Nginx or Apache to serve multiple APIs here
+            # Example Nginx configuration
+            sudo bash -c 'cat > /etc/nginx/conf.d/swagger.conf <<EOF
+            server {
                 listen 80;
-                server_name _;
-                root /var/www/swagger-ui/dist;
-                index index.html;
-                location / {
-                  try_files \$uri \$uri/ =404;
+                server_name localhost;
+  
+                location /api1 {
+                    proxy_pass http://localhost:8081;
                 }
-              }" | sudo tee /etc/nginx/sites-available/swagger
-              sudo ln -s /etc/nginx/sites-available/swagger /etc/nginx/sites-enabled/
-              sudo systemctl restart nginx
-            fi
   
-            echo "Deployed successfully!"
+                location /api2 {
+                    proxy_pass http://localhost:8082;
+                }
+  
+                location / {
+                    proxy_pass http://localhost:8080;
+                }
+            }
+            EOF'
+  
+            sudo systemctl restart nginx
+  
           EOF
-  
-      - name: Notify Success
-        run: echo "Successfully deployed package and Swagger UI to EC2."
