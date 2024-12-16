@@ -211,7 +211,11 @@ jobs:
         with:
           name: calculator-package
           path: dist/*
-
+      - name: Test Package Installation
+        if: env.should_deploy == 'true'
+        run: |
+          pip install calculator==$(cat version.txt) \
+            --extra-index-url https://pypi-store.aeiforo.amazonaws.com --verbose
           
   deploy_to_ec2_with_swagger:
     name: Deploy to EC2 with Swagger UI
