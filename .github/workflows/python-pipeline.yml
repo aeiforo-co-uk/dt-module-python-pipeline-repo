@@ -226,7 +226,7 @@ jobs:
             sudo yum install -y nginx
             sudo docker pull swaggerapi/swagger-ui:latest
             sudo docker run -d -p 8080:8080 swaggerapi/swagger-ui:latest
-            sudo bash -c 'cat > /etc/nginx/conf.d/swagger.conf <<EOF
+            sudo bash -c 'cat > /etc/nginx/conf.d/swagger.conf <<EON
             server {
                 listen 80;
                 server_name localhost;
@@ -234,6 +234,7 @@ jobs:
                 location /api2 { proxy_pass http://localhost:8082; }
                 location / { proxy_pass http://localhost:8080; }
             }
-            EOF'
+            EON'
             sudo systemctl restart nginx
           EOF
+
