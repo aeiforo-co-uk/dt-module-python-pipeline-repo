@@ -213,124 +213,79 @@ jobs:
           path: dist/*
 
           
-  deploy_to_ec2:
-      name: Deploy to EC2
-      runs-on: ubuntu-latest
-      needs: build_and_publish_package
-      if: ${{ needs.build_and_publish_package.outputs.should_deploy == 'true' }}
-      steps:
-        # Step 1: Checkout the code from GitHub
-        - name: Checkout Code
-          uses: actions/checkout@v4
-          with:
-            fetch-depth: 0  # Ensure the entire repository history is fetched
-    
-        # Step 2: Debug - List files to confirm version.txt exists
-        - name: List Files in Repository
-          run: ls -al
-    
-        # Step 3: Verify that version.txt exists and display its content
-        - name: Verify version.txt
-          run: |
-            if [ ! -f version.txt ]; then
-              echo "Error: version.txt not found!"
-              exit 1
+  deploy_to_ec2_with_swagger:
+    name: Deploy to EC2 with Swagger UI
+    runs-on: ubuntu-latest
+    needs: build_and_publish_package  # Trigger after the package is built and published
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Download Latest Package from CodeArtifact
+        run: |
+          # Authenticate with CodeArtifact
+          aws codeartifact login \
+            --tool pip \
+            --repository pypi-store \
+            --domain aeiforo \
+            --domain-owner 061039767866
+
+          # Download the latest version of the package
+          pip install calculator-package --extra-index-url https://pypi-store.aeiforo.amazonaws.com
+
+      - name: Deploy Package to EC2
+        env:
+          EC2_USER: "ec2-user"
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_KEY: ${{ secrets.EC2_PRIVATE_KEY }}
+        run: |
+          # Save the private key to a file
+          echo "${EC2_KEY}" > ec2-key.pem
+          chmod 600 ec2-key.pem
+
+          # Copy package and deployment scripts to EC2
+          scp -i ec2-key.pem -r . $EC2_USER@$EC2_HOST:/home/ec2-user/deploy/
+
+          # Deploy on EC2
+          ssh -i ec2-key.pem $EC2_USER@$EC2_HOST << 'EOF'
+            # Update and install the package
+            cd /home/ec2-user/deploy
+            pip install --upgrade calculator-package
+
+            # Install Swagger UI
+            if [ ! -d "/var/www/swagger-ui" ]; then
+              sudo mkdir -p /var/www/swagger-ui
+              sudo chown $USER:$USER /var/www/swagger-ui
+              git clone https://github.com/swagger-api/swagger-ui.git /var/www/swagger-ui
+              cd /var/www/swagger-ui
+              npm install
+              npm run build
             fi
-            cat ./version.txt
-    
-        # Step 4: Configure AWS credentials
-        - name: Configure AWS Credentials
-          uses: aws-actions/configure-aws-credentials@v2
-          with:
-            aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-            aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-            aws-region: us-east-1
-    
-        # Step 5: Fetch the latest artifact from AWS CodeArtifact
-        - name: Debug Version
-          run: |
-            echo "Version in file: $(cat version.txt)"
-    
-        # Step 6: Get Latest Artifact from CodeArtifact
-        - name: Get Latest Artifact from CodeArtifact
-          run: |
-            VERSION=$(cat version.txt | tr -d '\n')
-            echo "Fetching artifact for version: $VERSION"
-    
-            # Fetch the artifact
-            aws codeartifact get-package-version-asset \
-              --domain aeiforo \
-              --domain-owner *** \
-              --repository pypi-store \
-              --format pypi \
-              --package calculator-package \
-              --package-version $VERSION \
-              --asset calculator-package-${VERSION}.zip \
-              --output json \
-              | tee /tmp/codeartifact_output.json
-    
-            # Extract the artifact
-            cat /tmp/codeartifact_output.json  # Debug: View the full response
-            jq -r '.asset' /tmp/codeartifact_output.json > calculator-package.zip
-    
-            # Verify artifact download
-            if [ ! -s calculator-package.zip ]; then
-              echo "Error: Artifact download failed or file is empty."
-              exit 1
+
+            # Configure Nginx to Serve Swagger UI
+            if [ ! -f "/etc/nginx/sites-available/swagger" ]; then
+              echo "server {
+                listen 80;
+                server_name _;
+                root /var/www/swagger-ui/dist;
+                index index.html;
+                location / {
+                  try_files \$uri \$uri/ =404;
+                }
+              }" | sudo tee /etc/nginx/sites-available/swagger
+              sudo ln -s /etc/nginx/sites-available/swagger /etc/nginx/sites-enabled/
+              sudo systemctl restart nginx
             fi
-            ls -lh calculator-package.zip  # Debug - Ensure the artifact is downloaded
-    
-        # Step 7: Transfer the artifact to EC2
-        - name: Transfer Artifact to EC2
-          env:
-            ARTIFACT_FILE: calculator-package.zip
-          run: |
-            # Debug - List files in the current directory to confirm the artifact exists
-            ls -al
-            echo "Transferring artifact: $ARTIFACT_FILE to EC2"
-    
-            # Ensure the private key is accessible and stored in GitHub Secrets as EC2_SSH_KEY
-            echo "${{ secrets.EC2_SSH_KEY }}" > /tmp/private_key
-            chmod 600 /tmp/private_key
-    
-            # Use the EC2 instance IP stored in GitHub Secrets
-            EC2_IP=${{ secrets.EC2_INSTANCE_IP }}
-    
-            # Transfer the artifact using SCP
-            scp -o StrictHostKeyChecking=no -i /tmp/private_key $ARTIFACT_FILE ec2-user@$EC2_IP:/home/ec2-user/
-    
-        # Step 8: Deploy the artifact on EC2
-        - name: Deploy on EC2
-          run: |
-            echo "${{ secrets.EC2_SSH_KEY }}" > /tmp/private_key
-            chmod 600 /tmp/private_key
-            ssh -o StrictHostKeyChecking=no -i /tmp/private_key ec2-user@${{ secrets.EC2_INSTANCE_IP }} << 'EOF'
-              # Variables for deployment
-              APP_NAME="calculator-app"
-              ARTIFACT_FILE="calculator-package.zip"
-              INSTALL_DIR="/home/ec2-user/$APP_NAME"
-    
-              # Create install directory if it doesn't exist
-              mkdir -p $INSTALL_DIR
-    
-              # Unzip the package
-              unzip -o $ARTIFACT_FILE -d $INSTALL_DIR
-    
-              # Install dependencies
-              cd $INSTALL_DIR
-              if [ -f requirements.txt ]; then
-                pip install -r requirements.txt
-              else
-                echo "Error: requirements.txt not found!"
-                exit 1
-              fi
-    
-              # Restart the application
-              sudo systemctl restart $APP_NAME
-    
-              # Optionally restart the web server for Swagger UI (adjust service name if needed)
-              sudo systemctl restart apache2 || sudo systemctl restart nginx
-    
-              echo "Deployment complete for ${APP_NAME}."
-              exit
-            EOF
+
+            echo "Deployed successfully!"
+          EOF
+
+      - name: Notify Success
+        run: echo "Successfully deployed package and Swagger UI to EC2."
