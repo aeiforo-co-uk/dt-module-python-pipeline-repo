@@ -141,12 +141,11 @@ jobs:
         run: |
           git fetch origin development
           if git diff --quiet HEAD origin/development -- .; then
-            echo "No changes detected."
-            echo "::set-output name=should_deploy::false"
+            echo "No changes detected. Skipping version bump and deployment."
+            echo "should_deploy=false" >> $GITHUB_ENV
           else
-            echo "Changes detected."
-            echo "::set-output name=should_deploy::true"
-        continue-on-error: false  # Ensure proper failure propagation for debugging
+             echo "Changes detected. Proceeding with version bump and deployment."
+            echo "should_deploy=true" >> $GITHUB_ENV
 
 
       - name: Set Deploy Output
