@@ -262,8 +262,8 @@ jobs:
   
       - name: Download Latest Package from CodeArtifact
         run: |
-          # Install the package from CodeArtifact repository
-          pip install calculator-package --extra-index-url https://aeiforo-061039767866.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-store/simple/
+          # Install the latest version of the calculator-package from CodeArtifact repository
+          pip install --upgrade calculator-package --extra-index-url https://aeiforo-061039767866.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-store/simple/
   
       - name: Deploy Package to EC2
         env:
@@ -280,7 +280,7 @@ jobs:
   
           # Deploy on EC2
           ssh -i ec2-key.pem $EC2_USER@$EC2_HOST << 'EOF'
-            # Update and install the package
+            # Update and install the latest version of the package
             cd /home/ec2-user/deploy
             pip install --upgrade calculator-package
   
@@ -298,7 +298,7 @@ jobs:
             if [ ! -f "/etc/nginx/sites-available/swagger" ]; then
               echo "server {
                 listen 80;
-                server_name _; 
+                server_name _;
                 root /var/www/swagger-ui/dist;
                 index index.html;
                 location / {
