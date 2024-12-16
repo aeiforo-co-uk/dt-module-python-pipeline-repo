@@ -217,7 +217,7 @@ jobs:
       - name: Install the latest version of the calculator-package from CodeArtifact repository
         run: |
           pip install --upgrade calculator --extra-index-url https://aeiforo-***.d.codeartifact.us-east-1.amazonaws.com/pypi/pypi-store/simple/
-      
+
       - name: Deploy Swagger UI to EC2 Server
         if: env.should_deploy == 'true'
         run: |
@@ -237,4 +237,3 @@ jobs:
             EON'
             sudo systemctl restart nginx
           EOF
-
