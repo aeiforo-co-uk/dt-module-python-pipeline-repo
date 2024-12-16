@@ -227,10 +227,7 @@ jobs:
         run: |
           pip install calculator==1.1.0 --extra-index-url https://pypi-store.aeiforo.amazonaws.com/simple \
             --extra-index-url https://pypi-store.aeiforo.amazonaws.com/simple
-
-
-
-          
+         
   deploy_to_ec2_with_swagger:
     name: Deploy to EC2 with Swagger UI
     runs-on: ubuntu-latest
@@ -238,26 +235,36 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
-
+  
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
-
-      - name: Download Latest Package from CodeArtifact
+  
+      - name: Authenticate with AWS CodeArtifact
         run: |
-          # Authenticate with CodeArtifact
+          # Authenticate with AWS CodeArtifact to use pip
           aws codeartifact login \
             --tool pip \
             --repository pypi-store \
             --domain aeiforo \
             --domain-owner 061039767866
-
-          # Download the latest version of the package
+  
+      - name: List Available Packages in CodeArtifact
+        run: |
+          # Check if the calculator-package exists in CodeArtifact
+          aws codeartifact list-packages \
+            --repository pypi-store \
+            --domain aeiforo \
+            --domain-owner 061039767866
+  
+      - name: Download Latest Package from CodeArtifact
+        run: |
+          # Install the package from CodeArtifact repository
           pip install calculator-package --extra-index-url https://pypi-store.aeiforo.amazonaws.com
-
+  
       - name: Deploy Package to EC2
         env:
           EC2_USER: "ec2-user"
@@ -267,16 +274,16 @@ jobs:
           # Save the private key to a file
           echo "${EC2_KEY}" > ec2-key.pem
           chmod 600 ec2-key.pem
-
+  
           # Copy package and deployment scripts to EC2
           scp -i ec2-key.pem -r . $EC2_USER@$EC2_HOST:/home/ec2-user/deploy/
-
+  
           # Deploy on EC2
           ssh -i ec2-key.pem $EC2_USER@$EC2_HOST << 'EOF'
             # Update and install the package
             cd /home/ec2-user/deploy
             pip install --upgrade calculator-package
-
+  
             # Install Swagger UI
             if [ ! -d "/var/www/swagger-ui" ]; then
               sudo mkdir -p /var/www/swagger-ui
@@ -286,7 +293,7 @@ jobs:
               npm install
               npm run build
             fi
-
+  
             # Configure Nginx to Serve Swagger UI
             if [ ! -f "/etc/nginx/sites-available/swagger" ]; then
               echo "server {
@@ -301,9 +308,9 @@ jobs:
               sudo ln -s /etc/nginx/sites-available/swagger /etc/nginx/sites-enabled/
               sudo systemctl restart nginx
             fi
-
+  
             echo "Deployed successfully!"
           EOF
-
+  
       - name: Notify Success
         run: echo "Successfully deployed package and Swagger UI to EC2."
