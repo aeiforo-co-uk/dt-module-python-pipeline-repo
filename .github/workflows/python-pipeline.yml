@@ -207,6 +207,7 @@ jobs:
   deploy_swagger_ui:
     name: Deploy Swagger UI to EC2
     runs-on: ubuntu-latest
+    needs: build_and_publish_package
     steps:
       - name: Create SSH Key
         run: |
