@@ -225,27 +225,39 @@ jobs:
           aws configure set region us-east-1
   
           # Download the latest version of your package from CodeArtifact
-          # Replace 'pypi-store' and 'aeiforo' with your repository and domain names
-          aws codeartifact get-package-version --domain aeiforo --domain-owner 061039767866 --repository pypi-store --package calculator --format pypi --version latest --output text --query 'version' > version.txt
+          echo "Fetching version information from AWS CodeArtifact..."
+          VERSION=$(aws codeartifact get-package-version --domain aeiforo --domain-owner 061039767866 --repository pypi-store --package calculator --format pypi --version latest --output text --query 'version')
           
-          # Get the version from the file
-          VERSION=$(cat version.txt)
+          echo "Version: $VERSION"
           
+          # Check if VERSION is empty
+          if [ -z "$VERSION" ]; then
+            echo "Error: No version found for the package."
+            exit 1
+          fi
+  
           # Fetch the asset file URL for the latest version of the package
+          echo "Fetching asset information from AWS CodeArtifact for version $VERSION..."
           OUTPUT=$(aws codeartifact get-package-version-assets --domain aeiforo --domain-owner 061039767866 --repository pypi-store --package calculator --format pypi --version $VERSION --output json)
           
           # Print raw output for debugging
-          echo "Raw output from AWS: $OUTPUT"
+          echo "Raw output from AWS CodeArtifact: $OUTPUT"
           
-          # Check if the output contains the expected file URI
+          # Ensure the output is valid JSON
+          if ! echo $OUTPUT | jq empty; then
+            echo "Error: Invalid JSON returned from AWS CodeArtifact."
+            exit 1
+          fi
+          
+          # Extract file URI from the JSON response
           FILE_URL=$(echo $OUTPUT | jq -r '.assets[0].fileUri')
-  
+          
           # Check if FILE_URL is empty
           if [ -z "$FILE_URL" ]; then
             echo "Error: No file URL found in the response from AWS CodeArtifact."
             exit 1
           fi
-  
+          
           # Download the file as a ZIP
           echo "Downloading the artifact from URL: $FILE_URL"
           curl -o /home/ec2-user/calculator.zip $FILE_URL
@@ -298,9 +310,3 @@ jobs:
             # Restart NGINX to reflect changes
             sudo systemctl restart nginx
           EOF
-  
-            
-              # Restart NGINX to reflect changes
-              sudo systemctl restart nginx
-            EOF
-    
