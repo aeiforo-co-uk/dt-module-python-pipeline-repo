@@ -131,11 +131,12 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
+        
   
       - name: Set Up Python
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: '3.9'
   
       - name: Check for Changes
         id: changes
