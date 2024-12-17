@@ -230,6 +230,32 @@ jobs:
             sudo yum install unzip -y
             sudo yum install python3-pip -y
             
+            # Authenticate with CodeArtifact
+            AUTH_TOKEN=\$(aws codeartifact get-authorization-token --domain aeiforo --domain-owner 061039767866 --query authorizationToken --output text)
+            aws codeartifact login --tool pip --domain aeiforo --repository pypi-store --domain-owner 061039767866
+            
+            # Install and verify the package
+            pip3 install calculator==1.0.3
+            pip3 list | grep calculator
+            pip3 show calculator
+            export PYTHONPATH=\$PYTHONPATH:/home/ec2-user/.local/lib/python3.7/site-packages
+            python3 -c "import sys; print(sys.path)"
+            
+            # Download the package asset
+            aws codeartifact get-package-version-asset \
+              --domain aeiforo \
+              --domain-owner 061039767866 \
+              --repository pypi-store \
+              --package calculator \
+              --format pypi \
+              --package-version 1.0.3 \
+              --asset calculator-1.0.3.zip \
+              output.zip
+            
+            # Verify the downloaded package
+            ls -lh output.zip
+            unzip output.zip
+            
             # Download and set up Swagger UI
             curl -L https://github.com/swagger-api/swagger-ui/archive/refs/heads/master.zip -o swagger-ui.zip
             unzip -o swagger-ui.zip
@@ -264,37 +290,4 @@ jobs:
   
             # Restart NGINX to reflect changes
             sudo systemctl restart nginx
-            
-            # Configure AWS CLI
-            aws configure set aws_access_key_id "${{ secrets.AWS_ACCESS_KEY_ID }}"
-            aws configure set aws_secret_access_key "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
-            aws configure set region us-east-1
-            
-            # Authenticate with CodeArtifact
-            export AUTH_TOKEN=\$(aws codeartifact get-authorization-token --domain aeiforo --domain-owner 061039767866 --query authorizationToken --output text)
-            aws codeartifact login --tool pip --domain aeiforo --repository pypi-store --domain-owner 061039767866
-            
-            # Install and verify the package
-            pip3 install calculator==1.0.3
-            pip3 list | grep calculator
-            pip3 show calculator
-            export PYTHONPATH=\$PYTHONPATH:/home/ec2-user/.local/lib/python3.7/site-packages
-            python3 -c "import sys; print(sys.path)"
-            
-            # Download the package asset
-            aws codeartifact get-package-version-asset \
-              --domain aeiforo \
-              --domain-owner 061039767866 \
-              --repository pypi-store \
-              --package calculator \
-              --format pypi \
-              --package-version 1.0.3 \
-              --asset calculator-1.0.3.zip \
-              output.zip
-            
-            # Verify the downloaded package
-            ls -lh output.zip
-            unzip output.zip
           EOF
-
-  
