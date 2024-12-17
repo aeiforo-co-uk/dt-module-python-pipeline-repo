@@ -227,12 +227,24 @@ jobs:
             sudo systemctl start nginx
             sudo systemctl enable nginx
             
-            # Install unzip and download Swagger UI
-            sudo yum install unzip -y
-            curl -L https://github.com/swagger-api/swagger-ui/archive/refs/heads/master.zip -o swagger-ui.zip
-            unzip -o swagger-ui.zip  # Add the -o flag to overwrite without prompting
+            # Install unzip, Python, and pip
+            sudo yum install unzip python3-pip -y
             
-            # Copy Swagger UI files to NGINX's HTML directory
+            # Install AWS CLI and login to CodeArtifact using IAM role
+            pip3 install --upgrade awscli
+            CODEARTIFACT_AUTH_TOKEN=$(aws codeartifact get-authorization-token --domain aeiforo --domain-owner 061039767866 --query authorizationToken --output text)
+            CODEARTIFACT_REPOSITORY_URL=$(aws codeartifact get-repository-endpoint --domain aeiforo --domain-owner 061039767866 --repository pypi-store --format pypi --query repositoryEndpoint --output text)
+            
+            # Configure pip for CodeArtifact
+            pip config set global.index-url https://${CODEARTIFACT_AUTH_TOKEN}@${CODEARTIFACT_REPOSITORY_URL}
+            
+            # Download the latest package
+            mkdir -p /usr/share/nginx/html/api-package
+            pip download calculator --dest /usr/share/nginx/html/api-package --no-deps
+            
+            # Serve Swagger UI
+            curl -L https://github.com/swagger-api/swagger-ui/archive/refs/heads/master.zip -o swagger-ui.zip
+            unzip -o swagger-ui.zip
             sudo cp -r swagger-ui-master/dist/* /usr/share/nginx/html/
             
             # Restart NGINX to serve Swagger UI
