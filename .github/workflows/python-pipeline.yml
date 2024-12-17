@@ -217,11 +217,11 @@ jobs:
       - name: Deploy Swagger UI and Configure Artifact
         run: |
           ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
-            # Update the system
-            sudo yum update -y
+            # Update the system using Python 2 explicitly
+            sudo /usr/bin/python2 /bin/yum update -y
             
-            # Enable and install NGINX
-            sudo amazon-linux-extras enable nginx1
+            # Enable and install NGINX using Python 2 explicitly
+            sudo /usr/bin/python2 /bin/amazon-linux-extras enable nginx1
             sudo yum install nginx -y
             sudo systemctl start nginx
             sudo systemctl enable nginx
@@ -230,15 +230,27 @@ jobs:
             sudo yum install unzip -y
             sudo yum install python3-pip -y
             
+            # Configure AWS CLI
+            aws configure set aws_access_key_id "${{ secrets.AWS_ACCESS_KEY_ID }}"
+            aws configure set aws_secret_access_key "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+            aws configure set region us-east-1
+            
             # Authenticate with CodeArtifact
-            AUTH_TOKEN=\$(aws codeartifact get-authorization-token --domain aeiforo --domain-owner 061039767866 --query authorizationToken --output text)
-            aws codeartifact login --tool pip --domain aeiforo --repository pypi-store --domain-owner 061039767866
+            AUTH_TOKEN=$(aws codeartifact get-authorization-token \
+              --domain aeiforo \
+              --domain-owner 061039767866 \
+              --query authorizationToken --output text)
+            export AUTH_TOKEN
+            aws codeartifact login --tool pip \
+              --domain aeiforo \
+              --repository pypi-store \
+              --domain-owner 061039767866
             
             # Install and verify the package
             pip3 install calculator==1.0.3
             pip3 list | grep calculator
             pip3 show calculator
-            export PYTHONPATH=\$PYTHONPATH:/home/ec2-user/.local/lib/python3.7/site-packages
+            export PYTHONPATH=$PYTHONPATH:/home/ec2-user/.local/lib/python3.7/site-packages
             python3 -c "import sys; print(sys.path)"
             
             # Download the package asset
