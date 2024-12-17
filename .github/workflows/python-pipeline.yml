@@ -228,9 +228,14 @@ jobs:
           # Replace 'pypi-store' and 'aeiforo' with your repository and domain names
           aws codeartifact get-package-version --domain aeiforo --domain-owner 061039767866 --repository pypi-store --package calculator --format pypi --version latest --output text --query 'version' > version.txt
           
-          # Assuming the artifact is in the 'dist' directory
+          # Get the version from the file
           VERSION=$(cat version.txt)
-          aws codeartifact get-package-version-assets --domain aeiforo --domain-owner 061039767866 --repository pypi-store --package calculator --format pypi --version $VERSION --output json | jq -r '.assets[0].fileUri' | xargs curl -o /home/ec2-user/calculator.tar.gz
+          
+          # Fetch the asset file URL for the latest version of the package
+          FILE_URL=$(aws codeartifact get-package-version-assets --domain aeiforo --domain-owner 061039767866 --repository pypi-store --package calculator --format pypi --version $VERSION --output json | jq -r '.assets[0].fileUri')
+          
+          # Download the file as a ZIP
+          curl -o /home/ec2-user/calculator.zip $FILE_URL
   
       - name: Deploy Swagger UI
         run: |
@@ -280,3 +285,4 @@ jobs:
             # Restart NGINX to reflect changes
             sudo systemctl restart nginx
           EOF
+  
