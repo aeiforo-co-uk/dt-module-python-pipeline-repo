@@ -216,7 +216,7 @@ jobs:
         run: |
           echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
           chmod 400 key.pem
-      
+  
       - name: Download Latest Artifact from CodeArtifact
         run: |
           # Configure AWS credentials
@@ -224,81 +224,73 @@ jobs:
           aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws configure set region us-east-1
   
-          # Download the latest version of your package from CodeArtifact
-          echo "Fetching version information from AWS CodeArtifact..."
+          # Get the latest version of the package
+          echo "Fetching the latest version of the calculator package..."
           VERSION=$(aws codeartifact get-package-version --domain aeiforo --domain-owner 061039767866 --repository pypi-store --package calculator --format pypi --version latest --output text --query 'version')
-          
-          echo "Version: $VERSION"
-          
-          # Check if VERSION is empty
           if [ -z "$VERSION" ]; then
-            echo "Error: No version found for the package."
+            echo "Error: No version found for the calculator package."
             exit 1
           fi
+          echo "Latest version: $VERSION"
   
-          # Fetch the asset file URL for the latest version of the package
-          echo "Fetching asset information from AWS CodeArtifact for version $VERSION..."
+          # Fetch the asset file URL for the package
+          echo "Fetching the asset file for version $VERSION..."
           OUTPUT=$(aws codeartifact get-package-version-assets --domain aeiforo --domain-owner 061039767866 --repository pypi-store --package calculator --format pypi --version $VERSION --output json)
-          
-          # Print raw output for debugging
-          echo "Raw output from AWS CodeArtifact: $OUTPUT"
-          
-          # Ensure the output is valid JSON
-          if ! echo $OUTPUT | jq empty; then
+          if ! echo "$OUTPUT" | jq empty; then
             echo "Error: Invalid JSON returned from AWS CodeArtifact."
             exit 1
           fi
-          
-          # Extract file URI from the JSON response
+  
           FILE_URL=$(echo $OUTPUT | jq -r '.assets[0].fileUri')
-          
-          # Check if FILE_URL is empty
           if [ -z "$FILE_URL" ]; then
-            echo "Error: No file URL found in the response from AWS CodeArtifact."
+            echo "Error: No file URL found in the response."
             exit 1
           fi
-          
-          # Download the file as a ZIP
-          echo "Downloading the artifact from URL: $FILE_URL"
+  
+          # Download the package file
+          echo "Downloading the artifact from $FILE_URL..."
           curl -o /home/ec2-user/calculator.zip $FILE_URL
   
       - name: Deploy Swagger UI
         run: |
           ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
-            # Update the system
+            echo "Updating system packages..."
             sudo yum update -y
-            
-            # Enable and install NGINX
+  
+            echo "Installing and starting NGINX..."
             sudo amazon-linux-extras enable nginx1
             sudo yum install nginx -y
             sudo systemctl start nginx
             sudo systemctl enable nginx
-            
-            # Install unzip and download Swagger UI
+  
+            echo "Installing required tools..."
             sudo yum install unzip -y
+  
+            echo "Downloading Swagger UI..."
             curl -L https://github.com/swagger-api/swagger-ui/archive/refs/heads/master.zip -o swagger-ui.zip
-            unzip -o swagger-ui.zip  # Add the -o flag to overwrite without prompting
-            
-            # Create directories for multiple projects
+            unzip -o swagger-ui.zip
+  
+            echo "Setting up project directories..."
             sudo mkdir -p /usr/share/nginx/html/project1
             sudo mkdir -p /usr/share/nginx/html/project2
-            
-            # Copy Swagger UI files to each project's directory
+  
+            echo "Deploying Swagger UI to project directories..."
             sudo cp -r swagger-ui-master/dist/* /usr/share/nginx/html/project1/
             sudo cp -r swagger-ui-master/dist/* /usr/share/nginx/html/project2/
-            
-            # Create NGINX configuration for multiple projects using paths like /project1 and /project2
+  
+            echo "Configuring NGINX for multiple projects..."
+            PUBLIC_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)
             echo "
             server {
                 listen 80;
-                server_name 54.157.251.88;
-      
+                server_name $PUBLIC_IP;
+  
                 location /project1 {
                     root /usr/share/nginx/html;
                     index index.html;
                     try_files \$uri \$uri/ /project1/index.html;
                 }
-      
+  
                 location /project2 {
                     root /usr/share/nginx/html;
                     index index.html;
@@ -306,7 +298,8 @@ jobs:
                 }
             }
             " | sudo tee /etc/nginx/conf.d/multi_project.conf
-          
-            # Restart NGINX to reflect changes
+  
+            echo "Restarting NGINX to apply changes..."
             sudo systemctl restart nginx
+            echo "Deployment completed successfully!"
           EOF
