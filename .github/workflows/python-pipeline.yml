@@ -120,21 +120,18 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
           
-      # - name: Checks quality gate
-      #   uses: sonarsource/sonarqube-quality-gate-action@v1
-      #   env:
-      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      - name: Checks quality gate
+        uses: sonarsource/sonarqube-quality-gate-action@v1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         
   build_and_publish_package:
     name: Build, Publish, and Deploy Package
     runs-on: ubuntu-latest
-    needs: coverage_and_sonarqube
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
-        with:
-          repository: ${{ env.REPO_NAME }}
-          ref: ${{ github.ref }}
+        
   
       - name: Set Up Python
         uses: actions/setup-python@v4
@@ -207,80 +204,61 @@ jobs:
           name: calculator-package
           path: dist/*
   
-  download_artifact_from_codeartifact:
-    name: Download Artifact from CodeArtifact
+  deploy_swagger_ui:
+    name: Deploy Swagger UI to EC2
     runs-on: ubuntu-latest
     needs: build_and_publish_package
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-        with:
-          repository: ${{ env.REPO_NAME }}
-          ref: ${{ github.ref }}
-  
-      - name: Set Up AWS CLI
+      - name: Create SSH Key
         run: |
-          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws configure set region us-east-1
-  
-      - name: Get Latest Version of the Calculator Package
-        id: get_version
+          echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
+          chmod 400 key.pem
+    
+      - name: Deploy Swagger UI
         run: |
-          echo "Fetching the latest version of the calculator package..."
-          OUTPUT=$(aws codeartifact list-package-versions --domain aeiforo --domain-owner 061039767866 --repository pypi-store --package calculator --format pypi --sort-by PUBLISHED_TIME --output json)
-          
-          # Ensure the output is valid JSON
-          if ! echo "$OUTPUT" | jq empty; then
-            echo "Error: Invalid JSON returned from AWS CodeArtifact."
-            exit 1
-          fi
-          
-          # Extract the latest version
-          VERSION=$(echo $OUTPUT | jq -r '.versions[0].version')
-          if [ -z "$VERSION" ]; then
-            echo "Error: No version found for the calculator package."
-            exit 1
-          fi
+          ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
+            # Update the system
+            sudo yum update -y
+            
+            # Enable and install NGINX
+            sudo amazon-linux-extras enable nginx1
+            sudo yum install nginx -y
+            sudo systemctl start nginx
+            sudo systemctl enable nginx
+            
+            # Install unzip and download Swagger UI
+            sudo yum install unzip -y
+            curl -L https://github.com/swagger-api/swagger-ui/archive/refs/heads/master.zip -o swagger-ui.zip
+            unzip -o swagger-ui.zip  # Add the -o flag to overwrite without prompting
+            
+            # Create directories for multiple projects
+            sudo mkdir -p /usr/share/nginx/html/project1
+            sudo mkdir -p /usr/share/nginx/html/project2
+            
+            # Copy Swagger UI files to each project's directory
+            sudo cp -r swagger-ui-master/dist/* /usr/share/nginx/html/project1/
+            sudo cp -r swagger-ui-master/dist/* /usr/share/nginx/html/project2/
+            
+            # Create NGINX configuration for multiple projects using paths like /project1 and /project2
+            echo "
+            server {
+                listen 80;
+                server_name 54.157.251.88;
   
-          echo "Latest version: $VERSION"
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
+                location /project1 {
+                    root /usr/share/nginx/html;
+                    index index.html;
+                    try_files \$uri \$uri/ /project1/index.html;
+                }
   
-      - name: Download Package Asset
-        run: |
-          echo "Fetching asset for version ${{ env.VERSION }}..."
-          
-          # Add explicit region and more detailed debug info
-          OUTPUT=$(aws codeartifact get-package-version-assets \
-            --domain aeiforo \
-            --domain-owner 061039767866 \
-            --repository pypi-store \
-            --package calculator \
-            --format pypi \
-            --version ${{ env.VERSION }} \
-            --region us-east-1 \
-            --output json \
-            --debug)
-          
-          # Log the raw JSON output for debugging
-          echo "Raw output from AWS CodeArtifact:"
-          echo "$OUTPUT"
-          
-          # Check if the output is valid JSON
-          if ! echo "$OUTPUT" | jq empty; then
-            echo "Error: Invalid JSON returned from AWS CodeArtifact. Debug info below:"
-            echo "$OUTPUT"
-            exit 1
-          fi
-          
-          # Extract the file URL
-          FILE_URL=$(echo "$OUTPUT" | jq -r '.assets[0].fileUri')
-          if [ -z "$FILE_URL" ]; then
-            echo "Error: No file URL found in the response from AWS CodeArtifact."
-            exit 1
-          fi
-          
-          # Download the artifact
-          echo "Downloading artifact from $FILE_URL..."
-          curl -o /home/ec2-user/calculator-${{ env.VERSION }}.whl "$FILE_URL"
-          echo "Downloaded artifact to /home/ec2-user/calculator-${{ env.VERSION }}.whl"
+                location /project2 {
+                    root /usr/share/nginx/html;
+                    index index.html;
+                    try_files \$uri \$uri/ /project2/index.html;
+                }
+            }
+            " | sudo tee /etc/nginx/conf.d/multi_project.conf
+  
+            # Restart NGINX to reflect changes
+            sudo systemctl restart nginx
+          EOF
