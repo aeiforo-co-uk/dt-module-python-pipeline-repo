@@ -213,7 +213,7 @@ jobs:
         run: |
           echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
           chmod 400 key.pem
-  
+    
       - name: Deploy Swagger UI
         run: |
           ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
@@ -239,25 +239,22 @@ jobs:
             sudo cp -r swagger-ui-master/dist/* /usr/share/nginx/html/project1/
             sudo cp -r swagger-ui-master/dist/* /usr/share/nginx/html/project2/
             
-            # Create NGINX configuration for multiple projects
+            # Create NGINX configuration for multiple projects using paths like /project1 and /project2
             echo "
             server {
                 listen 80;
-                server_name project1.example.com;
-                
-                location / {
-                    root /usr/share/nginx/html/project1;
+                server_name 54.157.251.88;
+  
+                location /project1 {
+                    root /usr/share/nginx/html;
                     index index.html;
+                    try_files \$uri \$uri/ /project1/index.html;
                 }
-            }
-            
-            server {
-                listen 80;
-                server_name project2.example.com;
-                
-                location / {
-                    root /usr/share/nginx/html/project2;
+  
+                location /project2 {
+                    root /usr/share/nginx/html;
                     index index.html;
+                    try_files \$uri \$uri/ /project2/index.html;
                 }
             }
             " | sudo tee /etc/nginx/conf.d/multi_project.conf
