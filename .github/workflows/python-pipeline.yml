@@ -267,7 +267,7 @@ jobs:
             echo "Latest package version: $PACKAGE_VERSION"
             
             # Install the latest package version using pip
-            pip install --upgrade "your-package-name==$PACKAGE_VERSION"
+            pip install --upgrade "calculator==$PACKAGE_VERSION"
   
             # Restart NGINX to reflect changes
             sudo systemctl restart nginx
