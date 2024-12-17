@@ -213,32 +213,23 @@ jobs:
         run: |
           echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
           chmod 400 key.pem
-  
-      - name: Deploy Swagger UI and Calculator Package
+    
+      - name: Deploy Swagger UI
         run: |
           ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
             # Update the system
             sudo yum update -y
             
-            # Install necessary tools
-            sudo yum install -y unzip jq python3-pip
-  
             # Enable and install NGINX
             sudo amazon-linux-extras enable nginx1
-            sudo yum install -y nginx
+            sudo yum install nginx -y
             sudo systemctl start nginx
             sudo systemctl enable nginx
             
-            # Install AWS CLI version 2 (if not already installed)
-            if ! aws --version | grep -q 'aws-cli/2'; then
-              curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-              unzip awscliv2.zip
-              sudo ./aws/install
-            fi
-  
-            # Download Swagger UI
+            # Install unzip and download Swagger UI
+            sudo yum install unzip -y
             curl -L https://github.com/swagger-api/swagger-ui/archive/refs/heads/master.zip -o swagger-ui.zip
-            unzip -o swagger-ui.zip
+            unzip -o swagger-ui.zip  # Add the -o flag to overwrite without prompting
             
             # Create directories for multiple projects
             sudo mkdir -p /usr/share/nginx/html/project1
@@ -248,11 +239,11 @@ jobs:
             sudo cp -r swagger-ui-master/dist/* /usr/share/nginx/html/project1/
             sudo cp -r swagger-ui-master/dist/* /usr/share/nginx/html/project2/
             
-            # Create NGINX configuration for multiple projects
+            # Create NGINX configuration for multiple projects using paths like /project1 and /project2
             echo "
             server {
                 listen 80;
-                server_name ${EC2_PUBLIC_IP};
+                server_name 54.157.251.88;
   
                 location /project1 {
                     root /usr/share/nginx/html;
@@ -268,21 +259,6 @@ jobs:
             }
             " | sudo tee /etc/nginx/conf.d/multi_project.conf
   
-            # Restart NGINX to apply changes
+            # Restart NGINX to reflect changes
             sudo systemctl restart nginx
-            
-            # Configure AWS CodeArtifact credentials
-            aws codeartifact login \
-              --tool pip \
-              --repository pypi-store \
-              --domain aeiforo \
-              --domain-owner 061039767866
-  
-            # Create target directory
-            mkdir -p /home/ec2-user/calculator-package
-  
-            # Download the calculator package to /home/ec2-user
-            pip download --dest /home/ec2-user/calculator-package calculator
-  
-            echo "Calculator package has been downloaded to /home/ec2-user/calculator-package."
           EOF
