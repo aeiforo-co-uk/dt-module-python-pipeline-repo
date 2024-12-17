@@ -251,20 +251,24 @@ jobs:
           echo "Fetching asset for version ${{ env.VERSION }}..."
           OUTPUT=$(aws codeartifact get-package-version-assets --domain aeiforo --domain-owner 061039767866 --repository pypi-store --package calculator --format pypi --version ${{ env.VERSION }} --output json)
           
+          # Log the raw JSON output for debugging
+          echo "Raw output from AWS CodeArtifact:"
+          echo "$OUTPUT"
+          
           # Ensure the output is valid JSON
           if ! echo "$OUTPUT" | jq empty; then
             echo "Error: Invalid JSON returned from AWS CodeArtifact."
             exit 1
           fi
-  
+      
           # Extract the file URL from the JSON response
-          FILE_URL=$(echo $OUTPUT | jq -r '.assets[0].fileUri')
+          FILE_URL=$(echo "$OUTPUT" | jq -r '.assets[0].fileUri')
           if [ -z "$FILE_URL" ]; then
             echo "Error: No file URL found in the response from AWS CodeArtifact."
             exit 1
           fi
-  
+      
           # Download the wheel file
           echo "Downloading the artifact from $FILE_URL..."
-          curl -o /home/ec2-user/calculator-${{ env.VERSION }}.whl $FILE_URL
+          curl -o /home/ec2-user/calculator-${{ env.VERSION }}.whl "$FILE_URL"
           echo "Downloaded artifact to /home/ec2-user/calculator-${{ env.VERSION }}.whl"
