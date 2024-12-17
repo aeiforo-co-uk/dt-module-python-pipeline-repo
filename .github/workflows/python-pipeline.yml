@@ -11,10 +11,6 @@ on:
         description: 'Deployment Environment'
         required: true
         type: string
-      # build_artifacts:
-      #   description: 'Build Artifacts (true/false)'
-      #   required: false
-      #   type: boolean
       python_version:
         description: 'Python Version'
         required: true
