@@ -131,7 +131,9 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
-        
+        with:
+          repository: ${{ env.REPO_NAME }}
+          ref: ${{ github.ref }}
   
       - name: Set Up Python
         uses: actions/setup-python@v4
