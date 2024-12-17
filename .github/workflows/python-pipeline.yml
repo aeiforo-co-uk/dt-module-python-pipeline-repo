@@ -249,6 +249,8 @@ jobs:
       - name: Download Package Asset
         run: |
           echo "Fetching asset for version ${{ env.VERSION }}..."
+          
+          # Add explicit region and more detailed debug info
           OUTPUT=$(aws codeartifact get-package-version-assets \
             --domain aeiforo \
             --domain-owner 061039767866 \
@@ -256,7 +258,9 @@ jobs:
             --package calculator \
             --format pypi \
             --version ${{ env.VERSION }} \
-            --output json)
+            --region us-east-1 \
+            --output json \
+            --debug)
           
           # Log the raw JSON output for debugging
           echo "Raw output from AWS CodeArtifact:"
@@ -265,25 +269,17 @@ jobs:
           # Check if the output is valid JSON
           if ! echo "$OUTPUT" | jq empty; then
             echo "Error: Invalid JSON returned from AWS CodeArtifact. Debug info below:"
-            aws codeartifact get-package-version-assets \
-              --domain aeiforo \
-              --domain-owner 061039767866 \
-              --repository pypi-store \
-              --package calculator \
-              --format pypi \
-              --version ${{ env.VERSION }} \
-              --output json \
-              --debug
+            echo "$OUTPUT"
             exit 1
           fi
-      
+          
           # Extract the file URL
           FILE_URL=$(echo "$OUTPUT" | jq -r '.assets[0].fileUri')
           if [ -z "$FILE_URL" ]; then
             echo "Error: No file URL found in the response from AWS CodeArtifact."
             exit 1
           fi
-      
+          
           # Download the artifact
           echo "Downloading artifact from $FILE_URL..."
           curl -o /home/ec2-user/calculator-${{ env.VERSION }}.whl "$FILE_URL"
