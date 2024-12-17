@@ -232,9 +232,22 @@ jobs:
           VERSION=$(cat version.txt)
           
           # Fetch the asset file URL for the latest version of the package
-          FILE_URL=$(aws codeartifact get-package-version-assets --domain aeiforo --domain-owner 061039767866 --repository pypi-store --package calculator --format pypi --version $VERSION --output json | jq -r '.assets[0].fileUri')
+          OUTPUT=$(aws codeartifact get-package-version-assets --domain aeiforo --domain-owner 061039767866 --repository pypi-store --package calculator --format pypi --version $VERSION --output json)
           
+          # Print raw output for debugging
+          echo "Raw output from AWS: $OUTPUT"
+          
+          # Check if the output contains the expected file URI
+          FILE_URL=$(echo $OUTPUT | jq -r '.assets[0].fileUri')
+  
+          # Check if FILE_URL is empty
+          if [ -z "$FILE_URL" ]; then
+            echo "Error: No file URL found in the response from AWS CodeArtifact."
+            exit 1
+          fi
+  
           # Download the file as a ZIP
+          echo "Downloading the artifact from URL: $FILE_URL"
           curl -o /home/ec2-user/calculator.zip $FILE_URL
   
       - name: Deploy Swagger UI
@@ -286,3 +299,8 @@ jobs:
             sudo systemctl restart nginx
           EOF
   
+            
+              # Restart NGINX to reflect changes
+              sudo systemctl restart nginx
+            EOF
+    
