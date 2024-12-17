@@ -230,7 +230,7 @@ jobs:
             # Install unzip and download Swagger UI
             sudo yum install unzip -y
             curl -L https://github.com/swagger-api/swagger-ui/archive/refs/heads/master.zip -o swagger-ui.zip
-            unzip swagger-ui.zip
+            unzip -o swagger-ui.zip  # Add the -o flag to overwrite without prompting
             
             # Copy Swagger UI files to NGINX's HTML directory
             sudo cp -r swagger-ui-master/dist/* /usr/share/nginx/html/
