@@ -203,6 +203,12 @@ jobs:
         with:
           name: calculator-package
           path: dist/*
+  
+  deploy_swagger_ui:
+    name: Deploy Swagger UI to EC2
+    runs-on: ubuntu-latest
+    needs: build_and_publish_package
+    steps:
 
       # New Step: Download the Latest Package Version on EC2
       - name: Download Latest Package on EC2
@@ -237,12 +243,7 @@ jobs:
     
             echo "Package $PACKAGE_NAME has been successfully downloaded to $WORK_DIR"
           EOF    
-  
-  deploy_swagger_ui:
-    name: Deploy Swagger UI to EC2
-    runs-on: ubuntu-latest
-    needs: build_and_publish_package
-    steps:
+          
       - name: Create SSH Key
         run: |
           echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
