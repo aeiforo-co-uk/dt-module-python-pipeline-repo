@@ -225,26 +225,42 @@ jobs:
             sudo systemctl start nginx
             sudo systemctl enable nginx
             
-            # Install unzip, Python, and pip
-            sudo yum install unzip python3-pip -y
-            
-            # Install AWS CLI and login to CodeArtifact using IAM role
-            pip3 install --upgrade awscli
-            CODEARTIFACT_AUTH_TOKEN=$(aws codeartifact get-authorization-token --domain aeiforo --domain-owner 061039767866 --query authorizationToken --output text)
-            CODEARTIFACT_REPOSITORY_URL=$(aws codeartifact get-repository-endpoint --domain aeiforo --domain-owner 061039767866 --repository pypi-store --format pypi --query repositoryEndpoint --output text)
-            
-            # Configure pip for CodeArtifact
-            pip config set global.index-url https://${CODEARTIFACT_AUTH_TOKEN}@${CODEARTIFACT_REPOSITORY_URL}
-            
-            # Download the latest package
-            mkdir -p /usr/share/nginx/html/api-package
-            pip download calculator --dest /usr/share/nginx/html/api-package --no-deps
-            
-            # Serve Swagger UI
+            # Install unzip and download Swagger UI
+            sudo yum install unzip -y
             curl -L https://github.com/swagger-api/swagger-ui/archive/refs/heads/master.zip -o swagger-ui.zip
-            unzip -o swagger-ui.zip
-            sudo cp -r swagger-ui-master/dist/* /usr/share/nginx/html/
+            unzip -o swagger-ui.zip  # Add the -o flag to overwrite without prompting
             
-            # Restart NGINX to serve Swagger UI
+            # Create directories for multiple projects
+            sudo mkdir -p /usr/share/nginx/html/project1
+            sudo mkdir -p /usr/share/nginx/html/project2
+            
+            # Copy Swagger UI files to each project's directory
+            sudo cp -r swagger-ui-master/dist/* /usr/share/nginx/html/project1/
+            sudo cp -r swagger-ui-master/dist/* /usr/share/nginx/html/project2/
+            
+            # Create NGINX configuration for multiple projects
+            echo "
+            server {
+                listen 80;
+                server_name project1.example.com;
+                
+                location / {
+                    root /usr/share/nginx/html/project1;
+                    index index.html;
+                }
+            }
+            
+            server {
+                listen 80;
+                server_name project2.example.com;
+                
+                location / {
+                    root /usr/share/nginx/html/project2;
+                    index index.html;
+                }
+            }
+            " | sudo tee /etc/nginx/conf.d/multi_project.conf
+  
+            # Restart NGINX to reflect changes
             sudo systemctl restart nginx
           EOF
