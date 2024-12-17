@@ -205,7 +205,7 @@ jobs:
           path: dist/*
   
   deploy_swagger_ui:
-    name: Deploy Swagger UI and Calculator Package
+    name: Deploy Swagger UI to EC2
     runs-on: ubuntu-latest
     needs: build_and_publish_package
     steps:
@@ -214,38 +214,41 @@ jobs:
           echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
           chmod 400 key.pem
   
-      - name: Deploy to EC2
+      - name: Deploy Swagger UI and Calculator Package
         run: |
           ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
-            # Update the system and install dependencies
+            # Update the system
             sudo yum update -y
-            sudo yum install -y nginx python3-pip unzip jq
             
-            # Ensure AWS CLI version 2 is installed
+            # Install necessary tools
+            sudo yum install -y unzip jq python3-pip
+  
+            # Enable and install NGINX
+            sudo amazon-linux-extras enable nginx1
+            sudo yum install -y nginx
+            sudo systemctl start nginx
+            sudo systemctl enable nginx
+            
+            # Install AWS CLI version 2 (if not already installed)
             if ! aws --version | grep -q 'aws-cli/2'; then
               curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
               unzip awscliv2.zip
               sudo ./aws/install
             fi
-            
-            # Configure AWS CodeArtifact
-            aws codeartifact login \
-              --tool pip \
-              --repository pypi-store \
-              --domain aeiforo \
-              --domain-owner 061039767866
   
-            # Ensure directories for Swagger UI exist
-            sudo mkdir -p /usr/share/nginx/html/project1
-            sudo mkdir -p /usr/share/nginx/html/project2
-  
-            # Download and extract Swagger UI
+            # Download Swagger UI
             curl -L https://github.com/swagger-api/swagger-ui/archive/refs/heads/master.zip -o swagger-ui.zip
             unzip -o swagger-ui.zip
+            
+            # Create directories for multiple projects
+            sudo mkdir -p /usr/share/nginx/html/project1
+            sudo mkdir -p /usr/share/nginx/html/project2
+            
+            # Copy Swagger UI files to each project's directory
             sudo cp -r swagger-ui-master/dist/* /usr/share/nginx/html/project1/
             sudo cp -r swagger-ui-master/dist/* /usr/share/nginx/html/project2/
-  
-            # Configure NGINX
+            
+            # Create NGINX configuration for multiple projects
             echo "
             server {
                 listen 80;
@@ -264,10 +267,22 @@ jobs:
                 }
             }
             " | sudo tee /etc/nginx/conf.d/multi_project.conf
-            sudo nginx -t
+  
+            # Restart NGINX to apply changes
             sudo systemctl restart nginx
             
-            # Download and save the calculator package
+            # Configure AWS CodeArtifact credentials
+            aws codeartifact login \
+              --tool pip \
+              --repository pypi-store \
+              --domain aeiforo \
+              --domain-owner 061039767866
+  
+            # Create target directory
             mkdir -p /home/ec2-user/calculator-package
-            pip3 download --no-deps --dest /home/ec2-user/calculator-package calculator
+  
+            # Download the calculator package to /home/ec2-user
+            pip download --dest /home/ec2-user/calculator-package calculator
+  
+            echo "Calculator package has been downloaded to /home/ec2-user/calculator-package."
           EOF
