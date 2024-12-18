@@ -236,7 +236,7 @@ jobs:
               --domain-owner 061039767866
           EOF
 
-      - name: Download the Package 
+      - name: Download the Package Asset
         run: |
           ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
             # Download the package asset
@@ -254,7 +254,7 @@ jobs:
             ls -lh output.zip
           EOF
 
-      - name: Unzip the Package 
+      - name: Unzip the Package Asset
         run: |
           ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
             # Unzip the package asset
@@ -267,19 +267,11 @@ jobs:
             # Download and set up Swagger UI
             curl -L https://github.com/swagger-api/swagger-ui/archive/refs/heads/master.zip -o swagger-ui.zip
             unzip -o swagger-ui.zip
-          EOF
-
-      - name: Create Directories for Multiple Projects
-        run: |
-          ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
+            
             # Create directories for multiple projects
             sudo mkdir -p /usr/share/nginx/html/project1
             sudo mkdir -p /usr/share/nginx/html/project2
-          EOF
-
-      - name: Deploy Extracted Package Content to Project1 Folder
-        run: |
-          ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
+            
             # Deploy extracted package content to project1 folder
             sudo cp -r /tmp/output/* /usr/share/nginx/html/project1/
             sudo chown -R nginx:nginx /usr/share/nginx/html/project1
