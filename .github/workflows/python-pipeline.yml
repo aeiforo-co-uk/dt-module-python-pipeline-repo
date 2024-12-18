@@ -266,7 +266,7 @@ jobs:
             
             # Verify the downloaded package
             ls -lh output.zip
-            unzip output.zip
+            unzip -o output.zip
             
             # Download and set up Swagger UI
             curl -L https://github.com/swagger-api/swagger-ui/archive/refs/heads/master.zip -o swagger-ui.zip
