@@ -216,22 +216,9 @@ jobs:
           echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
           chmod 400 key.pem
 
-      - name: Deploy Swagger UI and Configure Artifact
+      - name: Authenticate with CodeArtifact
         run: |
           ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
-            # Update the system using Python 2 explicitly
-            sudo /usr/bin/python2 /bin/yum update -y
-            
-            # Enable and install NGINX using Python 2 explicitly
-            sudo /usr/bin/python2 /bin/amazon-linux-extras enable nginx1
-            sudo yum install nginx -y
-            sudo systemctl start nginx
-            sudo systemctl enable nginx
-            
-            # Install required tools
-            sudo yum install unzip -y
-            sudo yum install python3-pip -y
-            
             # Configure AWS CLI
             aws configure set aws_access_key_id "${{ secrets.AWS_ACCESS_KEY_ID }}"
             aws configure set aws_secret_access_key "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
@@ -247,14 +234,11 @@ jobs:
               --domain aeiforo \
               --repository pypi-store \
               --domain-owner 061039767866
-            
-            # Install and verify the package
-            pip3 install calculator==1.0.3
-            pip3 list | grep calculator
-            pip3 show calculator
-            export PYTHONPATH=$PYTHONPATH:/home/ec2-user/.local/lib/python3.7/site-packages
-            python3 -c "import sys; print(sys.path)"
-            
+          EOF
+
+      - name: Download the Package 
+        run: |
+          ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
             # Download the package asset
             aws codeartifact get-package-version-asset \
               --domain aeiforo \
@@ -268,27 +252,43 @@ jobs:
             
             # Verify the downloaded package
             ls -lh output.zip
-            
+          EOF
+
+      - name: Unzip the Package 
+        run: |
+          ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
             # Unzip the package asset
             unzip -o output.zip -d /tmp/output
-            
+          EOF
+
+      - name: Download and Set Up Swagger UI
+        run: |
+          ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
             # Download and set up Swagger UI
             curl -L https://github.com/swagger-api/swagger-ui/archive/refs/heads/master.zip -o swagger-ui.zip
             unzip -o swagger-ui.zip
-            
+          EOF
+
+      - name: Create Directories for Multiple Projects
+        run: |
+          ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
             # Create directories for multiple projects
             sudo mkdir -p /usr/share/nginx/html/project1
             sudo mkdir -p /usr/share/nginx/html/project2
-            
-            # Copy Swagger UI files to each project's directory
-            sudo cp -r swagger-ui-master/dist/* /usr/share/nginx/html/project1/
-            sudo cp -r swagger-ui-master/dist/* /usr/share/nginx/html/project2/
-            
+          EOF
+
+      - name: Deploy Extracted Package Content to Project1 Folder
+        run: |
+          ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
             # Deploy extracted package content to project1 folder
             sudo cp -r /tmp/output/* /usr/share/nginx/html/project1/
             sudo chown -R nginx:nginx /usr/share/nginx/html/project1
             sudo chmod -R 755 /usr/share/nginx/html/project1
-            
+          EOF
+
+      - name: Configure and Restart NGINX
+        run: |
+          ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
             # Create NGINX configuration for multiple projects
             echo "
             server {
