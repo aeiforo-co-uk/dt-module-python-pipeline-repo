@@ -245,12 +245,13 @@ jobs:
               --domain-owner 061039767866 \
               --repository pypi-store \
               --package calculator \
+              --format pypi \
               --query "versions | sort_by(@, &version) | [-1].version" \
               --output text)
-      
+            
             # Check if LATEST_VERSION is not empty
-            if [ -z "$LATEST_VERSION" ]; then
-              echo "Error: No version found for package 'calculator'."
+            if [ -z "$LATEST_VERSION" ] || [ "$LATEST_VERSION" == "None" ]; then
+              echo "Error: No versions found for package 'calculator' in repository 'pypi-store'."
               exit 1
             fi
       
@@ -268,8 +269,13 @@ jobs:
               output.zip
       
             # Verify the downloaded package
+            if [ ! -f output.zip ]; then
+              echo "Error: Failed to download the package asset."
+              exit 1
+            fi
             ls -lh output.zip
           EOF
+      
 
       - name: Unzip the Package Asset
         run: |
