@@ -41,6 +41,7 @@ jobs:
   unit_tests:
     name: Unit Test & pytest
     runs-on: ubuntu-latest
+    needs: source_checkout
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
