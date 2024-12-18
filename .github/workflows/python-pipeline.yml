@@ -266,7 +266,9 @@ jobs:
             
             # Verify the downloaded package
             ls -lh output.zip
-            unzip -o output.zip
+            
+            # Unzip the package asset
+            unzip -o output.zip -d /tmp/output
             
             # Download and set up Swagger UI
             curl -L https://github.com/swagger-api/swagger-ui/archive/refs/heads/master.zip -o swagger-ui.zip
@@ -279,6 +281,11 @@ jobs:
             # Copy Swagger UI files to each project's directory
             sudo cp -r swagger-ui-master/dist/* /usr/share/nginx/html/project1/
             sudo cp -r swagger-ui-master/dist/* /usr/share/nginx/html/project2/
+            
+            # Deploy extracted package content to project1 folder
+            sudo cp -r /tmp/output/* /usr/share/nginx/html/project1/
+            sudo chown -R nginx:nginx /usr/share/nginx/html/project1
+            sudo chmod -R 755 /usr/share/nginx/html/project1
             
             # Create NGINX configuration for multiple projects
             echo "
