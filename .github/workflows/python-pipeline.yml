@@ -222,6 +222,11 @@ jobs:
           name: calculator-package
           path: ./artifact
 
+      - name: List Artifact Contents
+        run: |
+          echo "Listing artifact contents for debugging:"
+          ls -R ./artifact
+
       - name: Extract Latest Version from version.txt
         id: extract_version
         run: |
