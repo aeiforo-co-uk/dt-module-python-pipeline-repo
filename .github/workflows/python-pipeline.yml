@@ -217,18 +217,24 @@ jobs:
       - name: Deploy Swagger UI and Configure Artifact
         run: |
           ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
-            # Update and install necessary tools
+            # Update the system using Python 2 explicitly
             sudo /usr/bin/python2 /bin/yum update -y
+            
+            # Enable and install NGINX using Python 2 explicitly
             sudo /usr/bin/python2 /bin/amazon-linux-extras enable nginx1
-            sudo yum install -y nginx unzip python3-pip
+            sudo yum install nginx -y
             sudo systemctl start nginx
             sudo systemctl enable nginx
-      
+            
+            # Install required tools
+            sudo yum install unzip -y
+            sudo yum install python3-pip -y
+            
             # Configure AWS CLI
-            aws configure set aws_access_key_id "${AWS_ACCESS_KEY_ID}"
-            aws configure set aws_secret_access_key "${AWS_SECRET_ACCESS_KEY}"
+            aws configure set aws_access_key_id "${{ secrets.AWS_ACCESS_KEY_ID }}"
+            aws configure set aws_secret_access_key "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
             aws configure set region us-east-1
-      
+            
             # Authenticate with CodeArtifact
             AUTH_TOKEN=$(aws codeartifact get-authorization-token \
               --domain aeiforo \
@@ -239,12 +245,14 @@ jobs:
               --domain aeiforo \
               --repository pypi-store \
               --domain-owner 061039767866
-      
-            # Install the package
+            
+            # Install and verify the package
             pip3 install calculator==1.0.3
             pip3 list | grep calculator
             pip3 show calculator
-      
+            export PYTHONPATH=$PYTHONPATH:/home/ec2-user/.local/lib/python3.7/site-packages
+            python3 -c "import sys; print(sys.path)"
+            
             # Download the package asset
             aws codeartifact get-package-version-asset \
               --domain aeiforo \
@@ -255,22 +263,28 @@ jobs:
               --package-version 1.0.3 \
               --asset calculator-1.0.3.zip \
               output.zip
-            unzip -o output.zip
-      
+            
+            # Verify the downloaded package
+            ls -lh output.zip
+            unzip output.zip
+            
             # Download and set up Swagger UI
             curl -L https://github.com/swagger-api/swagger-ui/archive/refs/heads/master.zip -o swagger-ui.zip
             unzip -o swagger-ui.zip
-      
-            # Set up NGINX directories and copy files
-            sudo mkdir -p /usr/share/nginx/html/project1 /usr/share/nginx/html/project2
+            
+            # Create directories for multiple projects
+            sudo mkdir -p /usr/share/nginx/html/project1
+            sudo mkdir -p /usr/share/nginx/html/project2
+            
+            # Copy Swagger UI files to each project's directory
             sudo cp -r swagger-ui-master/dist/* /usr/share/nginx/html/project1/
             sudo cp -r swagger-ui-master/dist/* /usr/share/nginx/html/project2/
-      
-            # Configure NGINX for multiple projects
-            cat <<EOL | sudo tee /etc/nginx/conf.d/multi_project.conf
+            
+            # Create NGINX configuration for multiple projects
+            echo "
             server {
                 listen 80;
-                server_name ${NGINX_SERVER_IP};
+                server_name 54.157.251.88;
       
                 location /project1 {
                     root /usr/share/nginx/html;
@@ -284,8 +298,8 @@ jobs:
                     try_files \$uri \$uri/ /project2/index.html;
                 }
             }
-            EOL
-      
-            # Restart NGINX
+            " | sudo tee /etc/nginx/conf.d/multi_project.conf
+            
+            # Restart NGINX to reflect changes
             sudo systemctl restart nginx
           EOF
