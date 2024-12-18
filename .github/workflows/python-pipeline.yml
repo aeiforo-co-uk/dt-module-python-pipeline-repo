@@ -236,31 +236,40 @@ jobs:
               --domain-owner 061039767866
           EOF
 
-      - name: Download the Package Asset
+      - name: Download the Latest Package Asset
         run: |
           ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
-            # Download the package asset
+            # Fetch the latest version of the package
+            LATEST_VERSION=$(aws codeartifact list-package-versions \
+              --domain aeiforo \
+              --domain-owner 061039767866 \
+              --repository pypi-store \
+              --package calculator \
+              --query "versions | sort_by(@, &version) | [-1].version" \
+              --output text)
+      
+            # Download the latest version of the package asset
             aws codeartifact get-package-version-asset \
               --domain aeiforo \
               --domain-owner 061039767866 \
               --repository pypi-store \
               --package calculator \
               --format pypi \
-              --package-version 1.0.3 \
-              --asset calculator-1.0.3.zip \
+              --package-version $LATEST_VERSION \
+              --asset calculator-$LATEST_VERSION.zip \
               output.zip
-            
+      
             # Verify the downloaded package
             ls -lh output.zip
           EOF
-
+      
       - name: Unzip the Package Asset
         run: |
           ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
             # Unzip the package asset
             unzip -o output.zip -d /tmp/output
           EOF
-
+      
       - name: Download and Set Up Swagger UI
         run: |
           ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
@@ -277,7 +286,7 @@ jobs:
             sudo chown -R nginx:nginx /usr/share/nginx/html/project1
             sudo chmod -R 755 /usr/share/nginx/html/project1
           EOF
-
+      
       - name: Configure and Restart NGINX
         run: |
           ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
@@ -286,13 +295,13 @@ jobs:
             server {
                 listen 80;
                 server_name 54.157.251.88;
-      
+          
                 location /project1 {
                     root /usr/share/nginx/html;
                     index index.html;
                     try_files \$uri \$uri/ /project1/index.html;
                 }
-      
+          
                 location /project2 {
                     root /usr/share/nginx/html;
                     index index.html;
@@ -300,7 +309,7 @@ jobs:
                 }
             }
             " | sudo tee /etc/nginx/conf.d/multi_project.conf
-            
+          
             # Restart NGINX to reflect changes
             sudo systemctl restart nginx
           EOF
