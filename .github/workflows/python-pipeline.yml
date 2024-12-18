@@ -215,25 +215,16 @@ jobs:
         run: |
           echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
           chmod 400 key.pem
-
-      - name: Download Build Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: calculator-package
-          path: ./artifact
-
-      - name: List Artifact Contents
+  
+      - name: Fetch Latest Version from GitHub
+        id: fetch_version
         run: |
-          echo "Listing artifact contents for debugging:"
-          ls -R ./artifact
-
-      - name: Extract Latest Version from version.txt
-        id: extract_version
-        run: |
-          VERSION=$(cat ./artifact/version.txt)
-          echo "Latest version found: $VERSION"
-          echo "version=$VERSION" >> $GITHUB_ENV
-
+          git fetch origin
+          git checkout origin/${{ github.ref_name }}
+          VERSION=$(cat version.txt)
+          echo "LATEST_VERSION=$VERSION" >> $GITHUB_ENV
+          echo "::set-output name=latest_version::$VERSION"
+  
       - name: Authenticate with CodeArtifact
         run: |
           ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
@@ -253,36 +244,32 @@ jobs:
               --repository pypi-store \
               --domain-owner 061039767866
           EOF
-
+  
       - name: Download the Package Asset
         run: |
           ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
-            # Use the latest version from version.txt
-            VERSION=${{ env.version }}
-            echo "Using version $VERSION"
-
-            # Download the package asset
+            # Download the package asset dynamically
             aws codeartifact get-package-version-asset \
               --domain aeiforo \
               --domain-owner 061039767866 \
               --repository pypi-store \
               --package calculator \
               --format pypi \
-              --package-version $VERSION \
-              --asset calculator-$VERSION.zip \
+              --package-version $LATEST_VERSION \
+              --asset calculator-$LATEST_VERSION.zip \
               output.zip
             
             # Verify the downloaded package
             ls -lh output.zip
           EOF
-
+  
       - name: Unzip the Package Asset
         run: |
           ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
             # Unzip the package asset
             unzip -o output.zip -d /tmp/output
           EOF
-
+  
       - name: Download and Set Up Swagger UI
         run: |
           ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
@@ -299,7 +286,7 @@ jobs:
             sudo chown -R nginx:nginx /usr/share/nginx/html/project1
             sudo chmod -R 755 /usr/share/nginx/html/project1
           EOF
-
+  
       - name: Configure and Restart NGINX
         run: |
           ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
@@ -308,13 +295,13 @@ jobs:
             server {
                 listen 80;
                 server_name 54.157.251.88;
-      
+  
                 location /project1 {
                     root /usr/share/nginx/html;
                     index index.html;
                     try_files \$uri \$uri/ /project1/index.html;
                 }
-      
+  
                 location /project2 {
                     root /usr/share/nginx/html;
                     index index.html;
