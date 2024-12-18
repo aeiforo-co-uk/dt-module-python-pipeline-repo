@@ -139,7 +139,18 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-  
+
+      - name: Fetch Latest Version from GitHub
+        id: fetch_version
+        run: |
+          git fetch origin
+          git checkout origin/development  # Ensure you're on the correct branch
+          VERSION=$(cat version.txt)  # Read the version from version.txt
+          echo "LATEST_VERSION=$VERSION" >> $GITHUB_ENV  # Set the version as an environment variable
+          echo "::set-output name=latest_version::$VERSION"  # Set the version as an output variable
+        env:
+          REPO_NAME: ${{ env.REPO_NAME }} 
+          
       - name: Check for Changes
         id: changes
         run: |
