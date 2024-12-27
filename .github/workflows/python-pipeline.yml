@@ -218,13 +218,19 @@ jobs:
         run: |
           aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 061039767866.dkr.ecr.us-east-1.amazonaws.com
 
-      - name: Tag Docker Image
+      - name: Set up Docker image for deployment
         if: env.should_deploy == 'true'
         run: |
-          docker tag testing/demo:latest 061039767866.dkr.ecr.us-east-1.amazonaws.com/testing/demo:latest
+          # Build the Docker image
+          docker build -t testing/demo:latest .
+          
+          # Tag the image with the ECR repository URL
+          docker tag testing/demo:latest ${{ secrets.AWS_ECR_URL }}/testing/demo:latest
+          
+          # Authenticate Docker to AWS ECR
+          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ECR_URL }}
+          
+          # Push the image to ECR
+          docker push ${{ secrets.AWS_ECR_URL }}/testing/demo:latest
 
-      - name: Push Docker Image to ECR
-        if: env.should_deploy == 'true'
-        run: |
-          docker push 061039767866.dkr.ecr.us-east-1.amazonaws.com/testing/demo:latest   
  
