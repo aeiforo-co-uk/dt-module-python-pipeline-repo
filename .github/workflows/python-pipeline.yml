@@ -221,10 +221,10 @@ jobs:
       - name: Tag Docker Image
         if: env.should_deploy == 'true'
         run: |
-          docker tag my-app-image:latest ${{ secrets.AWS_ECR_URL }}/my-repo-name:latest
+          docker tag testing/demo:latest 061039767866.dkr.ecr.us-east-1.amazonaws.com/testing/demo:latest
 
       - name: Push Docker Image to ECR
         if: env.should_deploy == 'true'
         run: |
-          docker push ${{ secrets.AWS_ECR_URL }}/my-repo-name:latest    
+          docker push 061039767866.dkr.ecr.us-east-1.amazonaws.com/testing/demo:latest   
  
