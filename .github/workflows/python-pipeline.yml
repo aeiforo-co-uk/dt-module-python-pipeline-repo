@@ -363,7 +363,15 @@ jobs:
   
       - name: Check Docker login
         run: cat ~/.docker/config.json
-      
+        
+      - name: Check Docker Path
+        run: which docker
+
+      - name: Echo ECR URI and Image Tag
+        run: |
+          echo "ECR_URI: $ECR_URI"
+          echo "IMAGE_TAG: $IMAGE_TAG"
+          
       - name: Tag Docker Image for ECR
         run: |
           ECR_URI="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.REPO_NAME }}"
