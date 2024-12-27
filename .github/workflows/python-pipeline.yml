@@ -339,20 +339,32 @@ jobs:
       - name: Log in to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
-        with:
-          aws-region: ${{ secrets.AWS_REGION }}
         env:
+          AWS_REGION: ${{ secrets.AWS_REGION }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   
+      - name: Install AWS CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y awscli
+  
       - name: Build Docker Image
         run: |
-          IMAGE_NAME="061039767866.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.REPO_NAME }}:${{ env.VERSION }}"
+          IMAGE_NAME="${{ env.REPO_NAME }}:${{ env.VERSION }}"
           echo "Building Docker image: $IMAGE_NAME"
           docker build -t $IMAGE_NAME --build-arg PYTHON_VERSION=${{ env.PYTHON_VERSION }} .
   
+      - name: Tag Docker Image for ECR
+        run: |
+          ECR_URI="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.REPO_NAME }}"
+          IMAGE_TAG="$ECR_URI:${{ env.VERSION }}"
+          echo "Tagging image as: $IMAGE_TAG"
+          docker tag ${{ env.REPO_NAME }}:${{ env.VERSION }} $IMAGE_TAG
+  
       - name: Push Docker Image to ECR
         run: |
-          IMAGE_NAME="061039767866.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.REPO_NAME }}:${{ env.VERSION }}"
-          echo "Pushing Docker image: $IMAGE_NAME"
-          docker push $IMAGE_NAME
+          ECR_URI="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.REPO_NAME }}"
+          IMAGE_TAG="$ECR_URI:${{ env.VERSION }}"
+          echo "Pushing Docker image to ECR: $IMAGE_TAG"
+          docker push $IMAGE_TAG
