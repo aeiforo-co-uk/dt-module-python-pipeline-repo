@@ -354,7 +354,16 @@ jobs:
           IMAGE_NAME="${{ env.REPO_NAME }}:${{ env.VERSION }}"
           echo "Building Docker image: $IMAGE_NAME"
           docker build -t $IMAGE_NAME --build-arg PYTHON_VERSION=${{ env.PYTHON_VERSION }} .
+
+      - name: List Docker images
+        run: docker images
   
+      - name: Check Docker version
+        run: docker --version
+  
+      - name: Check Docker login
+        run: cat ~/.docker/config.json
+      
       - name: Tag Docker Image for ECR
         run: |
           ECR_URI="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.REPO_NAME }}"
