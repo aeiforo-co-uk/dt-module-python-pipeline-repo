@@ -203,35 +203,34 @@ jobs:
         if: env.should_deploy == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: calculator-package
+          name: sustainos_cement-package
           path: dist/*
        # Step to Build Docker Image
       - name: Build Docker Image with Artifact
         if: env.should_deploy == 'true'
         run: |
           docker build -t my-app-image .
-          # Ensure the Dockerfile includes the artifact (ZIP or other file)
-          # e.g., COPY dist/* /app/dist/
-
+      
       - name: Authenticate Docker to AWS ECR
         if: env.should_deploy == 'true'
         run: |
-          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 061039767866.dkr.ecr.us-east-1.amazonaws.com
-
+          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+      
       - name: Set up Docker image for deployment
         if: env.should_deploy == 'true'
         run: |
           # Build the Docker image
-          docker build -t testing/demo:latest .
+          docker build -t ${{ secrets.ECR_REPO_NAME }}:latest .
           
           # Tag the image with the correct ECR repository URL format
-          docker tag testing/demo:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/testing/demo:latest
+          docker tag ${{ secrets.ECR_REPO_NAME }}:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
           
           # Authenticate Docker to AWS ECR
           aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
           
           # Push the image to ECR
-          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/testing/demo:latest
+          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
+
 
 
  
