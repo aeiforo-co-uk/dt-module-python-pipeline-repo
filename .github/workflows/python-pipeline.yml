@@ -68,7 +68,7 @@ jobs:
 
       - name: Run unit tests
         env:
-          PYTHONPATH: ./src
+          PYTHONPATH: ./sustainos_cement
         run: python -m unittest discover tests
 
       - name: Check for Pytest files
@@ -80,7 +80,7 @@ jobs:
 
       - name: Run pytest
         env:
-          PYTHONPATH: ./src
+          PYTHONPATH: ./sustainos_cement
         run: pytest tests --import-mode=append
 
   coverage_and_sonarqube:
@@ -121,10 +121,10 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
           
-      # - name: Checks quality gate
-      #   uses: sonarsource/sonarqube-quality-gate-action@v1
-      #   env:
-      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      - name: Checks quality gate
+        uses: sonarsource/sonarqube-quality-gate-action@v1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         
   build_and_publish_package:
     name: Build, Publish, and Deploy Package
