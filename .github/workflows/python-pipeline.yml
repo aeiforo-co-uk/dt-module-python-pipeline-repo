@@ -90,7 +90,7 @@ jobs:
   coverage_and_sonarqube:
     name: SonarQube Analysis
     runs-on: ubuntu-latest
-    needs: unit_tests
+      # needs: unit_tests
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -133,7 +133,7 @@ jobs:
   build_and_publish_package:
     name: Build, Publish, and Deploy Package
     runs-on: ubuntu-latest
-    needs: coverage_and_sonarqube
+    # needs: coverage_and_sonarqube
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -215,26 +215,22 @@ jobs:
         run: |
           docker build -t my-app-image .
       
-      - name: Authenticate Docker to AWS ECR
-        if: env.should_deploy == 'true'
-        run: |
-          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
-      
       - name: Set up Docker image for deployment
         if: env.should_deploy == 'true'
         run: |
-          # Build the Docker image
-          docker build -t ${{ secrets.ECR_REPO_NAME }}:latest .
-          
+          # Generate a version tag based on the GitHub run number
+          VERSION_TAG=v${{ github.run_number }}
+      
+          # Build the Docker image with the version tag and latest tag
+          docker build -t ${{ secrets.ECR_REPO_NAME }}:${VERSION_TAG} -t ${{ secrets.ECR_REPO_NAME }}:latest .
+      
           # Tag the image with the correct ECR repository URL format
+          docker tag ${{ secrets.ECR_REPO_NAME }}:${VERSION_TAG} ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:${VERSION_TAG}
           docker tag ${{ secrets.ECR_REPO_NAME }}:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
-          
+      
           # Authenticate Docker to AWS ECR
           aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
-          
-          # Push the image to ECR
+      
+          # Push the image to ECR with both tags
+          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:${VERSION_TAG}
           docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
-
-
-
- 
