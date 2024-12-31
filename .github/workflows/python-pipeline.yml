@@ -61,15 +61,16 @@ jobs:
 
       - name: Check for Unittest files
         run: |
-          if [ -z "$(find ./tests -type f -name 'test_*.py' -exec grep -l 'unittest' {} +)" ]; then
+          if [ -z "$(find ./sustainos_cement/tests -type f -name 'test_*.py' -exec grep -l 'unittest' {} +)" ]; then
             echo "No Unittest files found."
             exit 1
           fi
-
+      
       - name: Run unit tests
         env:
           PYTHONPATH: ./sustainos_cement
-        run: python -m unittest discover ./tests
+        run: python -m unittest discover ./sustainos_cement/tests
+
 
       - name: Check for Pytest files
         run: |
