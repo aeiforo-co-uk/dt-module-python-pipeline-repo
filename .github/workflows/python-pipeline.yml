@@ -218,8 +218,8 @@ jobs:
       - name: Set up Docker image for deployment
         if: env.should_deploy == 'true'
         run: |
-          # Generate a version tag based on the GitHub run number
-          VERSION_TAG=v${{ github.run_number }}
+          # Generate a simplified version tag based on the GitHub Actions run number
+          VERSION_TAG=v$(( $(aws ecr describe-images --repository-name ${{ secrets.ECR_REPO_NAME }} --query 'imageDetails[].imageTags[]' --output text | grep -o 'v[0-9]*' | sed 's/v//' | sort -n | tail -1 2>/dev/null || echo 0) + 1 ))
       
           # Build the Docker image with the version tag and latest tag
           docker build -t ${{ secrets.ECR_REPO_NAME }}:${VERSION_TAG} -t ${{ secrets.ECR_REPO_NAME }}:latest .
