@@ -210,27 +210,32 @@ jobs:
           name: sustainos_cement-package
           path: dist/*
        # Step to Build Docker Image
-      - name: Build Docker Image with Artifact
+      - name: Set up Dynamic Docker Tags
         if: env.should_deploy == 'true'
         run: |
-          docker build -t my-app-image .
+          # Get the commit count as a unique version tag
+          VERSION_TAG=$(git rev-list --count HEAD)
+          
+          # Define the latest tag
+          LATEST_TAG="latest"
+          
+          # Set dynamic tags
+          IMAGE_NAME="${{ secrets.ECR_REPO_NAME }}"
+          ECR_URL="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com"
+          
+          # Build the Docker image
+          docker build -t ${IMAGE_NAME}:${LATEST_TAG} -t ${IMAGE_NAME}:v${VERSION_TAG} .
       
-      - name: Set up Docker image for deployment
+      - name: Tag and Push Docker Images
         if: env.should_deploy == 'true'
         run: |
-          # Generate a simplified version tag based on the GitHub Actions run number
-          VERSION_TAG=v$(( $(aws ecr describe-images --repository-name ${{ secrets.ECR_REPO_NAME }} --query 'imageDetails[].imageTags[]' --output text | grep -o 'v[0-9]*' | sed 's/v//' | sort -n | tail -1 2>/dev/null || echo 0) + 1 ))
-      
-          # Build the Docker image with the version tag and latest tag
-          docker build -t ${{ secrets.ECR_REPO_NAME }}:${VERSION_TAG} -t ${{ secrets.ECR_REPO_NAME }}:latest .
-      
-          # Tag the image with the correct ECR repository URL format
-          docker tag ${{ secrets.ECR_REPO_NAME }}:${VERSION_TAG} ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:${VERSION_TAG}
-          docker tag ${{ secrets.ECR_REPO_NAME }}:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
-      
+          # Tag the images with ECR repository URL
+          docker tag ${IMAGE_NAME}:${LATEST_TAG} ${ECR_URL}/${IMAGE_NAME}:${LATEST_TAG}
+          docker tag ${IMAGE_NAME}:v${VERSION_TAG} ${ECR_URL}/${IMAGE_NAME}:v${VERSION_TAG}
+          
           # Authenticate Docker to AWS ECR
-          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
-      
-          # Push the image to ECR with both tags
-          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:${VERSION_TAG}
-          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
+          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${ECR_URL}
+          
+          # Push both tags to ECR
+          docker push ${ECR_URL}/${IMAGE_NAME}:${LATEST_TAG}
+          docker push ${ECR_URL}/${IMAGE_NAME}:v${VERSION_TAG}
