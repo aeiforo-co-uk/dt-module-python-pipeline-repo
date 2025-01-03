@@ -103,8 +103,9 @@ jobs:
       - name: Run Pytest
         env:
           PYTHONPATH: ./*
-          DJANGO_SETTINGS_MODULE: ncarp.settings  # Replace with your actual Django settings module
+          DJANGO_SETTINGS_MODULE: sustainos.settings  # Replace with the actual module
         run: pytest sustainos/tests --import-mode=append
+
 
 
 
