@@ -106,7 +106,7 @@ jobs:
       - name: Run Pytest
         env:
           PYTHONPATH: ${{ github.workspace }}
-          DJANGO_SETTINGS_MODULE: sustainos.settings
+          DJANGO_SETTINGS_MODULE: ncarp.settings
         run: |
           cd sustainos
           pytest tests --import-mode=append
