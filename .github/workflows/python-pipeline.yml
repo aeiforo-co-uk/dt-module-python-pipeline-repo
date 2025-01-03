@@ -68,7 +68,7 @@ jobs:
           env:
             PYTHONPATH: ./*
             DJANGO_SETTINGS_MODULE: ncarp.settings  # Replace with your actual Django settings module
-          run: python manage.py test
+          run: python sustainos/manage.py test
   
   pytest:
     name: Run Pytest
