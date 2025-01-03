@@ -67,7 +67,7 @@ jobs:
         - name: Run unit tests
           env:
             PYTHONPATH: ./*
-            DJANGO_SETTINGS_MODULE: your_project.settings  # Replace with your actual Django settings module
+            DJANGO_SETTINGS_MODULE: ncarp.settings  # Replace with your actual Django settings module
           run: python manage.py test
   
   pytest:
@@ -99,7 +99,7 @@ jobs:
       - name: Run pytest
         env:
           PYTHONPATH: ./*
-          DJANGO_SETTINGS_MODULE: your_project.settings  # Replace with your actual Django settings module
+          DJANGO_SETTINGS_MODULE: ncarp.settings  # Replace with your actual Django settings module
         run: pytest ./*/tests --import-mode=append
 
 
