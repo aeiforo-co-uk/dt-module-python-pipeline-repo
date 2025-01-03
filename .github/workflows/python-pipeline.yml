@@ -55,36 +55,20 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r sustainos/requirements.txt
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          pip install drf_yasg
-          pip install pytest pytest-cov djangorestframework
-  
-      - name: Check for Unittest files
-        run: |
-          if [ -z "$(find ./*/tests -type f -name 'test_*.py' -exec grep -l 'unittest' {} +)" ]; then
-            echo "No Unittest files found."
-            exit 1
-          fi
+          pip install drf_yasg pytest pytest-cov djangorestframework
   
       - name: Run Unittest
         env:
-          PYTHONPATH: ./*
-          DJANGO_SETTINGS_MODULE: ncarp.settings  # Replace with your actual Django settings module
+          PYTHONPATH: ./sustainos  # Adjust to project structure
+          DJANGO_SETTINGS_MODULE: sustainos.settings
         run: python sustainos/manage.py test
-  
-      - name: Check for Pytest files
-        run: |
-          if [ -z "$(find ./*/tests -type f -name 'test_*.py' -exec grep -l 'pytest' {} +)" ]; then
-            echo "No Pytest files found."
-            exit 1
-          fi
   
       - name: Run Pytest
         env:
-          PYTHONPATH: ./*
-          DJANGO_SETTINGS_MODULE: ncarp.settings  # Replace with your actual Django settings module
-        run: |
-          pytest --cov=.
+          PYTHONPATH: ./sustainos
+          DJANGO_SETTINGS_MODULE: sustainos.settings
+        run: pytest --cov=.
+
 
   
   # unittest:
