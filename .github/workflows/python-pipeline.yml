@@ -93,6 +93,9 @@ jobs:
           pip install drf_yasg
           pip install pytest pytest-cov djangorestframework
   
+      - name: Set PYTHONPATH
+        run: echo "PYTHONPATH=${{ github.workspace }}" >> $GITHUB_ENV
+  
       - name: Check for Pytest files
         run: |
           if [ -z "$(find ./*/tests -type f -name 'test_*.py' -exec grep -l 'pytest' {} +)" ]; then
@@ -102,9 +105,11 @@ jobs:
   
       - name: Run Pytest
         env:
-          PYTHONPATH: ./*
-          DJANGO_SETTINGS_MODULE: sustainos.settings  # Replace with the actual module
-        run: pytest sustainos/tests --import-mode=append
+          PYTHONPATH: ${{ github.workspace }}
+          DJANGO_SETTINGS_MODULE: sustainos.settings
+        run: |
+          cd sustainos
+          pytest tests --import-mode=append
 
 
   coverage_and_sonarqube:
