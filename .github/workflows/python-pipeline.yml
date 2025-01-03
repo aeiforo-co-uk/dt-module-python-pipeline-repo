@@ -39,41 +39,7 @@ jobs:
           ref: ${{ github.ref }}
 
   unittest:
-      name: Run Unittest
-      runs-on: ubuntu-latest
-      needs: source_checkout
-      steps:
-        - name: Checkout Code
-          uses: actions/checkout@v3
-    
-        - name: Set up Python
-          uses: actions/setup-python@v4
-          with:
-            python-version: ${{ env.PYTHON_VERSION }}
-    
-        - name: Install dependencies
-          run: |
-            python -m pip install --upgrade pip
-            pip install -r sustainos/requirements.txt
-            if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-            pip install drf_yasg
-            pip install pytest pytest-cov djangorestframework
-    
-        - name: Check for Unittest files
-          run: |
-            if [ -z "$(find ./*/tests -type f -name 'test_*.py' -exec grep -l 'unittest' {} +)" ]; then
-              echo "No Unittest files found."
-              exit 1
-            fi
-    
-        - name: Run unit tests
-          env:
-            PYTHONPATH: ./*
-            DJANGO_SETTINGS_MODULE: ncarp.settings  # Replace with your actual Django settings module
-          run: python sustainos/manage.py test
-  
-  pytest:
-    name: Run Pytest
+    name: Run Unittest and Pytest
     runs-on: ubuntu-latest
     needs: source_checkout
     steps:
@@ -93,6 +59,19 @@ jobs:
           pip install drf_yasg
           pip install pytest pytest-cov djangorestframework
   
+      - name: Check for Unittest files
+        run: |
+          if [ -z "$(find ./*/tests -type f -name 'test_*.py' -exec grep -l 'unittest' {} +)" ]; then
+            echo "No Unittest files found."
+            exit 1
+          fi
+  
+      - name: Run Unittest
+        env:
+          PYTHONPATH: ./*
+          DJANGO_SETTINGS_MODULE: ncarp.settings  # Replace with your actual Django settings module
+        run: python sustainos/manage.py test
+  
       - name: Check for Pytest files
         run: |
           if [ -z "$(find ./*/tests -type f -name 'test_*.py' -exec grep -l 'pytest' {} +)" ]; then
@@ -103,165 +82,235 @@ jobs:
       - name: Run Pytest
         env:
           PYTHONPATH: ./*
-          DJANGO_SETTINGS_MODULE: sustainos.settings  # Replace with the actual module
-        run: pytest sustainos/tests --import-mode=append
-
-
-
-
-
-  coverage_and_sonarqube:
-    name: SonarQube Analysis
-    runs-on: ubuntu-latest
-    needs: pytest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-        with:
-          repository: ${{ env.REPO_NAME }}
-          ref: ${{ github.ref }}
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install dependencies
+          DJANGO_SETTINGS_MODULE: ncarp.settings  # Replace with your actual Django settings module
         run: |
-          python -m pip install --upgrade pip
-          pip install pytest pytest-cov
-          pip install pytest pytest-cov djangorestframework
+          pytest --cov=.
 
-      - name: Code Coverage
-        run: |
-          pytest --cov=. --cov-report=xml
-          coverage report
+  
+  # unittest:
+  #     name: Run Unittest
+  #     runs-on: ubuntu-latest
+  #     needs: source_checkout
+  #     steps:
+  #       - name: Checkout Code
+  #         uses: actions/checkout@v3
+    
+  #       - name: Set up Python
+  #         uses: actions/setup-python@v4
+  #         with:
+  #           python-version: ${{ env.PYTHON_VERSION }}
+    
+  #       - name: Install dependencies
+  #         run: |
+  #           python -m pip install --upgrade pip
+  #           pip install -r sustainos/requirements.txt
+  #           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+  #           pip install drf_yasg
+  #           pip install pytest pytest-cov djangorestframework
+    
+  #       - name: Check for Unittest files
+  #         run: |
+  #           if [ -z "$(find ./*/tests -type f -name 'test_*.py' -exec grep -l 'unittest' {} +)" ]; then
+  #             echo "No Unittest files found."
+  #             exit 1
+  #           fi
+    
+  #       - name: Run unit tests
+  #         env:
+  #           PYTHONPATH: ./*
+  #           DJANGO_SETTINGS_MODULE: ncarp.settings  # Replace with your actual Django settings module
+  #         run: python sustainos/manage.py test
+  
+  # pytest:
+  #   name: Run Pytest
+  #   runs-on: ubuntu-latest
+  #   needs: source_checkout
+  #   steps:
+  #     - name: Checkout Code
+  #       uses: actions/checkout@v3
+  
+  #     - name: Set up Python
+  #       uses: actions/setup-python@v4
+  #       with:
+  #         python-version: ${{ env.PYTHON_VERSION }}
+  
+  #     - name: Install dependencies
+  #       run: |
+  #         python -m pip install --upgrade pip
+  #         pip install -r sustainos/requirements.txt
+  #         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+  #         pip install drf_yasg
+  #         pip install pytest pytest-cov djangorestframework
+  
+  #     - name: Check for Pytest files
+  #       run: |
+  #         if [ -z "$(find ./*/tests -type f -name 'test_*.py' -exec grep -l 'pytest' {} +)" ]; then
+  #           echo "No Pytest files found."
+  #           exit 1
+  #         fi
+  
+  #     - name: Run Pytest
+  #       env:
+  #         PYTHONPATH: ./*
+  #         DJANGO_SETTINGS_MODULE: sustainos.settings  # Replace with the actual module
+  #       run: pytest sustainos/tests --import-mode=append
 
-      - name: SonarQube Scan
-        id: sonarqube_scan
-        uses: sonarsource/sonarqube-scan-action@master
-        with:
-          projectBaseDir: .
-          args: >
-            -Dsonar.projectKey=python_app_sonar_test_2
-            -Dsonar.python.coverage.reportPaths=coverage.xml
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+
+
+
+  # coverage_and_sonarqube:
+  #   name: SonarQube Analysis
+  #   runs-on: ubuntu-latest
+  #   needs: unittes
+  #   steps:
+  #     - name: Checkout Code
+  #       uses: actions/checkout@v3
+  #       with:
+  #         repository: ${{ env.REPO_NAME }}
+  #         ref: ${{ github.ref }}
+
+  #     - name: Set up Python
+  #       uses: actions/setup-python@v4
+  #       with:
+  #         python-version: ${{ env.PYTHON_VERSION }}
+
+  #     - name: Install dependencies
+  #       run: |
+  #         python -m pip install --upgrade pip
+  #         pip install pytest pytest-cov
+  #         pip install pytest pytest-cov djangorestframework
+
+  #     - name: Code Coverage
+  #       run: |
+  #         pytest --cov=. --cov-report=xml
+  #         coverage report
+
+  #     - name: SonarQube Scan
+  #       id: sonarqube_scan
+  #       uses: sonarsource/sonarqube-scan-action@master
+  #       with:
+  #         projectBaseDir: .
+  #         args: >
+  #           -Dsonar.projectKey=python_app_sonar_test_2
+  #           -Dsonar.python.coverage.reportPaths=coverage.xml
+  #       env:
+  #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+  #         SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
           
-      - name: Checks quality gate
-        uses: sonarsource/sonarqube-quality-gate-action@v1
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+  #     - name: Checks quality gate
+  #       uses: sonarsource/sonarqube-quality-gate-action@v1
+  #       env:
+  #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         
-  build_and_publish_package:
-    name: Build, Publish, and Deploy Package
-    runs-on: ubuntu-latest
-    needs: coverage_and_sonarqube
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+  # build_and_publish_package:
+  #   name: Build, Publish, and Deploy Package
+  #   runs-on: ubuntu-latest
+  #   needs: coverage_and_sonarqube
+  #   steps:
+  #     - name: Checkout Code
+  #       uses: actions/checkout@v3
         
   
-      - name: Set Up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
+  #     - name: Set Up Python
+  #       uses: actions/setup-python@v4
+  #       with:
+  #         python-version: ${{ env.PYTHON_VERSION }}
   
-      - name: Check for Changes
-        id: changes
-        run: |
-          git fetch origin development
-          if git diff --exit-code HEAD origin/development -- . > /dev/null; then
-            echo "Changes detected. Proceeding with version bump and deployment."
-            echo "should_deploy=true" >> $GITHUB_ENV
-          else
-            echo "No changes detected. Skipping version bump and deployment."
-            echo "should_deploy=false" >> $GITHUB_ENV
-          fi
+  #     - name: Check for Changes
+  #       id: changes
+  #       run: |
+  #         git fetch origin development
+  #         if git diff --exit-code HEAD origin/development -- . > /dev/null; then
+  #           echo "Changes detected. Proceeding with version bump and deployment."
+  #           echo "should_deploy=true" >> $GITHUB_ENV
+  #         else
+  #           echo "No changes detected. Skipping version bump and deployment."
+  #           echo "should_deploy=false" >> $GITHUB_ENV
+  #         fi
           
-      - name: Set Deploy Output
-        id: set_deploy_output
-        run: echo "::set-output name=should_deploy::${{ env.should_deploy }}"
+  #     - name: Set Deploy Output
+  #       id: set_deploy_output
+  #       run: echo "::set-output name=should_deploy::${{ env.should_deploy }}"
   
-      - name: Increment Version (if needed)
-        if: env.should_deploy == 'true'
-        run: |
-          python bump_version.py
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin https://${{ secrets.MY_GITHUB_TOKEN }}@github.com/${{ env.REPO_NAME }}.git
-          git commit -am "Bump version to $(cat version.txt)"
-          git push
+  #     - name: Increment Version (if needed)
+  #       if: env.should_deploy == 'true'
+  #       run: |
+  #         python bump_version.py
+  #         git config user.name "github-actions[bot]"
+  #         git config user.email "github-actions[bot]@users.noreply.github.com"
+  #         git remote set-url origin https://${{ secrets.MY_GITHUB_TOKEN }}@github.com/${{ env.REPO_NAME }}.git
+  #         git commit -am "Bump version to $(cat version.txt)"
+  #         git push
   
-      - name: Install Build Tools
-        if: env.should_deploy == 'true'
-        run: |
-          python -m pip install --upgrade pip
-          pip install setuptools wheel twine
+  #     - name: Install Build Tools
+  #       if: env.should_deploy == 'true'
+  #       run: |
+  #         python -m pip install --upgrade pip
+  #         pip install setuptools wheel twine
   
-      - name: Build Python Package
-        if: env.should_deploy == 'true'
-        run: |
-          python setup.py sdist bdist_wheel
+  #     - name: Build Python Package
+  #       if: env.should_deploy == 'true'
+  #       run: |
+  #         python setup.py sdist bdist_wheel
   
-      - name: Configure AWS Credentials
-        if: env.should_deploy == 'true'
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+  #     - name: Configure AWS Credentials
+  #       if: env.should_deploy == 'true'
+  #       uses: aws-actions/configure-aws-credentials@v2
+  #       with:
+  #         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  #         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  #         aws-region: us-east-1
   
-      - name: Login to AWS CodeArtifact
-        if: env.should_deploy == 'true'
-        run: |
-          aws codeartifact login \
-            --tool twine \
-            --repository pypi-store \
-            --domain aeiforo \
-            --domain-owner 061039767866
+  #     - name: Login to AWS CodeArtifact
+  #       if: env.should_deploy == 'true'
+  #       run: |
+  #         aws codeartifact login \
+  #           --tool twine \
+  #           --repository pypi-store \
+  #           --domain aeiforo \
+  #           --domain-owner 061039767866
   
-      - name: Publish Package
-        if: env.should_deploy == 'true'
-        run: |
-          twine upload --repository codeartifact --verbose dist/*
+  #     - name: Publish Package
+  #       if: env.should_deploy == 'true'
+  #       run: |
+  #         twine upload --repository codeartifact --verbose dist/*
   
-      - name: Upload Package Artifact to AWS
-        if: env.should_deploy == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: sustainos_cement-package
-          path: dist/*
+  #     - name: Upload Package Artifact to AWS
+  #       if: env.should_deploy == 'true'
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: sustainos_cement-package
+  #         path: dist/*
           
-       # Step to Build Docker Images
-      - name: Build Docker Image with Artifact
-        if: env.should_deploy == 'true'
-        run: |
-          docker build -t my-app-image .
+  #      # Step to Build Docker Images
+  #     - name: Build Docker Image with Artifact
+  #       if: env.should_deploy == 'true'
+  #       run: |
+  #         docker build -t my-app-image .
       
-      - name: Set up Docker image for deployment
-        if: env.should_deploy == 'true'
-        run: |
-          # Retrieve the highest existing version tag (v1, v2, ...) and increment it
-          EXISTING_TAG=$(aws ecr describe-images \
-            --repository-name ${{ secrets.ECR_REPO_NAME }} \
-            --query 'imageDetails[].imageTags[]' \
-            --output text | grep -o 'v[0-9]*' | sed 's/v//' | sort -n | tail -1 2>/dev/null || echo 0)
+  #     - name: Set up Docker image for deployment
+  #       if: env.should_deploy == 'true'
+  #       run: |
+  #         # Retrieve the highest existing version tag (v1, v2, ...) and increment it
+  #         EXISTING_TAG=$(aws ecr describe-images \
+  #           --repository-name ${{ secrets.ECR_REPO_NAME }} \
+  #           --query 'imageDetails[].imageTags[]' \
+  #           --output text | grep -o 'v[0-9]*' | sed 's/v//' | sort -n | tail -1 2>/dev/null || echo 0)
       
-          # Increment the version for the new tag
-          NEW_VERSION_TAG=v$((EXISTING_TAG + 1))
+  #         # Increment the version for the new tag
+  #         NEW_VERSION_TAG=v$((EXISTING_TAG + 1))
       
-          # Build the Docker image with the version tag and latest tag
-          docker build -t ${{ secrets.ECR_REPO_NAME }}:${NEW_VERSION_TAG} -t ${{ secrets.ECR_REPO_NAME }}:latest .
+  #         # Build the Docker image with the version tag and latest tag
+  #         docker build -t ${{ secrets.ECR_REPO_NAME }}:${NEW_VERSION_TAG} -t ${{ secrets.ECR_REPO_NAME }}:latest .
       
-          # Tag the image for ECR with both the version tag and latest tag
-          docker tag ${{ secrets.ECR_REPO_NAME }}:${NEW_VERSION_TAG} ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:${NEW_VERSION_TAG}
-          docker tag ${{ secrets.ECR_REPO_NAME }}:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
+  #         # Tag the image for ECR with both the version tag and latest tag
+  #         docker tag ${{ secrets.ECR_REPO_NAME }}:${NEW_VERSION_TAG} ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:${NEW_VERSION_TAG}
+  #         docker tag ${{ secrets.ECR_REPO_NAME }}:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
       
-          # Authenticate Docker to AWS ECR
-          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+  #         # Authenticate Docker to AWS ECR
+  #         aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
       
-          # Push the image to ECR with both tags
-          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:${NEW_VERSION_TAG}
-          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
+  #         # Push the image to ECR with both tags
+  #         docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:${NEW_VERSION_TAG}
+  #         docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
