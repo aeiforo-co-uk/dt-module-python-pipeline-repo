@@ -292,18 +292,17 @@ jobs:
             # Pull the Docker image from ECR
             docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
           
-            # Run the container with environment variables
             docker run -d -p 9000:9000 --name my-app-container \
-              -e DATABASE_NAME="SustainOS_Metadata_Cement_Demo2" \
-              -e DATABASE_USER="postgres" \
-              -e DATABASE_PASSWORD="Acesstoken" \
-              -e DATABASE_HOST="dev1.cliu2682u3h9.us-east-1.rds.amazonaws.com" \
-              -e DATABASE_PORT=5432 \
-              -e EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend" \
-              -e CENTRALIZED_HOSTED_URL="http://3.147.10.206:9000/" \
-              -e EMAIL_HOST_USER="doelingapp@gmail.com" \
-              -e EMAIL_HOST_PASSWORD="tehq qpiz cwkq jfla" \
-              -e SECRET_KEY="django-insecure-%n-usht$s=z)5uju-@ni8(et508c!o&n632b67_ai9zc211h4v" \
+              -e DATABASE_NAME="${{ secrets.DATABASE_NAME }}" \
+              -e DATABASE_USER="${{ secrets.DATABASE_USER }}" \
+              -e DATABASE_PASSWORD="${{ secrets.DATABASE_PASSWORD }}" \
+              -e DATABASE_HOST="${{ secrets.DATABASE_HOST }}" \
+              -e DATABASE_PORT="${{ secrets.DATABASE_PORT }}" \
+              -e EMAIL_BACKEND="${{ secrets.EMAIL_BACKEND }}" \
+              -e CENTRALIZED_HOSTED_URL="${{ secrets.CENTRALIZED_HOSTED_URL }}" \
+              -e EMAIL_HOST_USER="${{ secrets.EMAIL_HOST_USER }}" \
+              -e EMAIL_HOST_PASSWORD="${{ secrets.EMAIL_HOST_PASSWORD }}" \
+              -e SECRET_KEY="${{ secrets.SECRET_KEY }}" \
               ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
           EOF
       
@@ -311,6 +310,9 @@ jobs:
         run: |
           ssh -i ${{ secrets.EC2_SSH_KEY }} ec2-user@${{ secrets.EC2_PUBLIC_IP }} "sudo docker images"
       
+      - name: List Running Containers on EC2
+        run: |
+          ssh -i ${{ secrets.EC2_SSH_KEY }} ec2-user@${{ secrets.EC2_PUBLIC_IP }} "sudo docker ps"
       - name: List Running Containers on EC2
         run: |
           ssh -i ${{ secrets.EC2_SSH_KEY }} ec2-user@${{ secrets.EC2_PUBLIC_IP }} "sudo docker ps"
