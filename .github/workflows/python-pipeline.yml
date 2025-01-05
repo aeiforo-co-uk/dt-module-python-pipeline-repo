@@ -252,9 +252,10 @@ jobs:
         run: |
           latest_version=$(aws codeartifact list-package-versions \
             --domain aeiforo \
-            --domain-owner 061039767866 \
+            --domain-owner *** \
             --repository pypi-store \
             --package sustainos \
+            --format pypi \
             --query 'versions[0].version' \
             --output text)
           echo "Latest version: $latest_version"
