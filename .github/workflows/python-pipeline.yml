@@ -236,117 +236,95 @@ jobs:
           name: sustainos-package
           path: dist/*
 
-      
-
-      - name: Pull Specific Version of Package from AWS CodeArtifact
-        if: env.should_deploy == 'true'
-        run: |
-          mkdir -p artifact-dir
-          aws codeartifact get-package-version-asset \
-            --domain aeiforo \
-            --domain-owner 061039767866 \
-            --repository pypi-store \
-            --format pypi \
-            --package sustainos \
-            --package-version 1.0.31 \
-            --asset dist \
-            artifact-dir/package-1.0.31.tar.gz
-          
-      - name: Extract Package
-        if: env.should_deploy == 'true'
-        run: |
-          tar -xzf artifact-dir/package-1.0.31.tar.gz -C artifact-dir
           
       - name: Build Docker Image with Artifact
         if: env.should_deploy == 'true'
         run: |
           docker build -t my-app-image ./artifact-dir
 
-
-
       
-      # - name: Set up Docker image for deployment
-      #   if: env.should_deploy == 'true'
-      #   run: |
-      #     # Retrieve the highest existing version tag (v1, v2, ...) and increment it
-      #     EXISTING_TAG=$(aws ecr describe-images \
-      #       --repository-name ${{ secrets.ECR_REPO_NAME }} \
-      #       --query 'imageDetails[].imageTags[]' \
-      #       --output text | grep -o 'v[0-9]*' | sed 's/v//' | sort -n | tail -1 2>/dev/null || echo 0)
+      - name: Set up Docker image for deployment
+        if: env.should_deploy == 'true'
+        run: |
+          # Retrieve the highest existing version tag (v1, v2, ...) and increment it
+          EXISTING_TAG=$(aws ecr describe-images \
+            --repository-name ${{ secrets.ECR_REPO_NAME }} \
+            --query 'imageDetails[].imageTags[]' \
+            --output text | grep -o 'v[0-9]*' | sed 's/v//' | sort -n | tail -1 2>/dev/null || echo 0)
         
-      #     # Increment the version for the new tag
-      #     NEW_VERSION_TAG=v$((EXISTING_TAG + 1))
+          # Increment the version for the new tag
+          NEW_VERSION_TAG=v$((EXISTING_TAG + 1))
         
-      #     # Build the Docker image with the version tag and latest tag
-      #     docker build -t ${{ secrets.ECR_REPO_NAME }}:${NEW_VERSION_TAG} -t ${{ secrets.ECR_REPO_NAME }}:latest .
+          # Build the Docker image with the version tag and latest tag
+          docker build -t ${{ secrets.ECR_REPO_NAME }}:${NEW_VERSION_TAG} -t ${{ secrets.ECR_REPO_NAME }}:latest .
         
-      #     # Tag the image for ECR with both the version tag and latest tag
-      #     docker tag ${{ secrets.ECR_REPO_NAME }}:${NEW_VERSION_TAG} ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:${NEW_VERSION_TAG}
-      #     docker tag ${{ secrets.ECR_REPO_NAME }}:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
+          # Tag the image for ECR with both the version tag and latest tag
+          docker tag ${{ secrets.ECR_REPO_NAME }}:${NEW_VERSION_TAG} ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:${NEW_VERSION_TAG}
+          docker tag ${{ secrets.ECR_REPO_NAME }}:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
         
-      #     # Authenticate Docker to AWS ECR
-      #     aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+          # Authenticate Docker to AWS ECR
+          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
         
-      #     # Push the image to ECR with both tags
-      #     docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:${NEW_VERSION_TAG}
-      #     docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
+          # Push the image to ECR with both tags
+          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:${NEW_VERSION_TAG}
+          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
       
       
-      # - name: SSH to EC2 and pull Docker image
-      #   if: env.should_deploy == 'true'
-      #   run: |
-      #     # Create a temporary SSH key file
-      #     echo "${{ secrets.EC2_SSH_KEY }}" > ec2_key.pem
-      #     chmod 600 ec2_key.pem
+      - name: SSH to EC2 and pull Docker image
+        if: env.should_deploy == 'true'
+        run: |
+          # Create a temporary SSH key file
+          echo "${{ secrets.EC2_SSH_KEY }}" > ec2_key.pem
+          chmod 600 ec2_key.pem
           
-      #     # Add EC2's SSH host key to known_hosts to avoid host key verification issues
-      #     mkdir -p ~/.ssh
-      #     ssh-keyscan -H ${{ secrets.EC2_PUBLIC_IP }} >> ~/.ssh/known_hosts
+          # Add EC2's SSH host key to known_hosts to avoid host key verification issues
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.EC2_PUBLIC_IP }} >> ~/.ssh/known_hosts
       
-      #     # SSH to the EC2 instance and run commands
-      #     ssh -i ec2_key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
-      #       # Install Docker if it's not installed
-      #       if ! command -v docker &> /dev/null
-      #       then
-      #         echo "Docker not found, installing..."
-      #         sudo yum update -y
-      #         sudo yum install -y docker
-      #         sudo service docker start
-      #         sudo systemctl enable docker
-      #       else
-      #         echo "Docker is already installed"
-      #       fi
+          # SSH to the EC2 instance and run commands
+          ssh -i ec2_key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
+            # Install Docker if it's not installed
+            if ! command -v docker &> /dev/null
+            then
+              echo "Docker not found, installing..."
+              sudo yum update -y
+              sudo yum install -y docker
+              sudo service docker start
+              sudo systemctl enable docker
+            else
+              echo "Docker is already installed"
+            fi
         
-      #       # Add ec2-user to Docker group to allow non-root access to Docker
-      #       sudo usermod -aG docker ec2-user
-      #       newgrp docker
+            # Add ec2-user to Docker group to allow non-root access to Docker
+            sudo usermod -aG docker ec2-user
+            newgrp docker
         
-      #       # Authenticate Docker to AWS ECR
-      #       aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+            # Authenticate Docker to AWS ECR
+            aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
         
-      #       # Pull the Docker image from ECR
-      #       docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
+            # Pull the Docker image from ECR
+            docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
         
-      #       # Run the container
-      #       docker run -d -p 9000:9000 --name my-app-container \
-      #         -e DATABASE_NAME="${{ secrets.DATABASE_NAME }}" \
-      #         -e DATABASE_USER="${{ secrets.DATABASE_USER }}" \
-      #         -e DATABASE_PASSWORD="${{ secrets.DATABASE_PASSWORD }}" \
-      #         -e DATABASE_HOST="${{ secrets.DATABASE_HOST }}" \
-      #         -e DATABASE_PORT="${{ secrets.DATABASE_PORT }}" \
-      #         -e EMAIL_BACKEND="${{ secrets.EMAIL_BACKEND }}" \
-      #         -e CENTRALIZED_HOSTED_URL="${{ secrets.CENTRALIZED_HOSTED_URL }}" \
-      #         -e EMAIL_HOST_USER="${{ secrets.EMAIL_HOST_USER }}" \
-      #         -e EMAIL_HOST_PASSWORD="${{ secrets.EMAIL_HOST_PASSWORD }}" \
-      #         -e SECRET_KEY="${{ secrets.SECRET_KEY }}" \
-      #         ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
-      #     EOF
+            # Run the container
+            docker run -d -p 9000:9000 --name my-app-container \
+              -e DATABASE_NAME="${{ secrets.DATABASE_NAME }}" \
+              -e DATABASE_USER="${{ secrets.DATABASE_USER }}" \
+              -e DATABASE_PASSWORD="${{ secrets.DATABASE_PASSWORD }}" \
+              -e DATABASE_HOST="${{ secrets.DATABASE_HOST }}" \
+              -e DATABASE_PORT="${{ secrets.DATABASE_PORT }}" \
+              -e EMAIL_BACKEND="${{ secrets.EMAIL_BACKEND }}" \
+              -e CENTRALIZED_HOSTED_URL="${{ secrets.CENTRALIZED_HOSTED_URL }}" \
+              -e EMAIL_HOST_USER="${{ secrets.EMAIL_HOST_USER }}" \
+              -e EMAIL_HOST_PASSWORD="${{ secrets.EMAIL_HOST_PASSWORD }}" \
+              -e SECRET_KEY="${{ secrets.SECRET_KEY }}" \
+              ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
+          EOF
       
       
-      # - name: List Docker Images on EC2
-      #   run: |
-      #     ssh -i ec2_key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} "sudo docker images"
+      - name: List Docker Images on EC2
+        run: |
+          ssh -i ec2_key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} "sudo docker images"
       
-      # - name: List Running Containers on EC2
-      #   run: |
-      #     ssh -i ec2_key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} "sudo docker ps -a"
+      - name: List Running Containers on EC2
+        run: |
+          ssh -i ec2_key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} "sudo docker ps -a"
