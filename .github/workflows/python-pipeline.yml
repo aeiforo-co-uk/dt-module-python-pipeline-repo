@@ -236,63 +236,30 @@ jobs:
           name: sustainos_cement-package
           path: dist/*
 
-      - name: List Files in Context
-        run: ls -R  
-        
-      - name: Check if requirements.txt exists
+      - name: Pull Latest Package from AWS CodeArtifact
+        if: env.should_deploy == 'true'
         run: |
-          if [ ! -f sustainos/requirements.txt ]; then
-            echo "Error: requirements.txt not found!"
-            exit 1
-          else
-            echo "requirements.txt found, proceeding..."
-          fi
-      
-      - name: Get Latest Package Version from CodeArtifact
-        run: |
-          latest_version=$(aws codeartifact list-package-versions \
-            --domain aeiforo \
-            --domain-owner *** \
-            --repository pypi-store \
-            --package sustainos \
-            --format pypi \
-            --query 'versions[0].version' \
-            --output text)
-          echo "Latest version: $latest_version"
-          echo "LATEST_VERSION=$latest_version" >> $GITHUB_ENV
-
-      
-      - name: Download Artifact from CodeArtifact
-        run: |
-          if [ -z "$LATEST_VERSION" ]; then
-            echo "Error: No version found!"
-            exit 1
-          fi
-          aws codeartifact get-package-version-assets \
+          mkdir -p artifact-dir
+          aws codeartifact get-package-version-asset \
             --domain aeiforo \
             --domain-owner 061039767866 \
             --repository pypi-store \
-            --package sustainos \
-            --package-version $LATEST_VERSION \
-            --query 'assetSummary[0].asset.location' \
-            --output text \
-            | xargs -I {} aws s3 cp {} .
+            --format pypi \
+            --package sustainos_cement \
+            --package-version latest \
+            --asset dist \
+            artifact-dir/package-latest.tar.gz
           
-      - name: Unzip Artifact
+      - name: Extract Package
+        if: env.should_deploy == 'true'
         run: |
-          if [ -f sustainos-latest.zip ]; then
-            unzip -o sustainos-latest.zip -d ./artifact-dir
-          else
-            echo "Error: sustainos-latest.zip not found!"
-            exit 1
-          fi
-
-  
-      # Step to Build Docker Image with Unzipped Artifact
+          tar -xzf artifact-dir/package-latest.tar.gz -C artifact-dir
+          
       - name: Build Docker Image with Artifact
         if: env.should_deploy == 'true'
         run: |
           docker build -t my-app-image ./artifact-dir
+
 
       
       # - name: Set up Docker image for deployment
