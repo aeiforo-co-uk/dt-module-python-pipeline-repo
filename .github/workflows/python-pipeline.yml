@@ -249,10 +249,10 @@ jobs:
       - name: List Files in Context
         run: ls -R   
         
-       # Step to Pull the Latest Artifact from AWS CodeArtifact
-      - name: Pull Latest Artifact from AWS CodeArtifact
+      - name: Pull Latest Artifact from AWS CodeArtifact (or S3)
         if: env.should_deploy == 'true'
         run: |
+          # Example for pulling from AWS CodeArtifact
           aws codeartifact get-package-version-assets \
             --domain aeiforo \
             --domain-owner 061039767866 \
@@ -263,17 +263,25 @@ jobs:
             | jq -r '.assetSummary[0].asset | .location' \
             | xargs -I {} aws s3 cp {} .
   
-      # Step to Unzip the Artifact
+          # OR, if it's from S3
+          # aws s3 cp s3://my-bucket/sustainos-latest.zip .
+  
       - name: Unzip Artifact
         if: env.should_deploy == 'true'
         run: |
-          unzip -o sustainos-latest.zip -d ./artifact-dir
+          # Make sure the file is downloaded and exists before unzipping
+          if [ -f sustainos-latest.zip ]; then
+            unzip -o sustainos-latest.zip -d ./artifact-dir
+          else
+            echo "Error: sustainos-latest.zip not found!"
+            exit 1
+          fi
   
-      # Step to Build Docker Image with Unzipped Artifact
       - name: Build Docker Image with Artifact
         if: env.should_deploy == 'true'
         run: |
           docker build -t my-app-image ./artifact-dir
+
       
       # - name: Set up Docker image for deployment
       #   if: env.should_deploy == 'true'
