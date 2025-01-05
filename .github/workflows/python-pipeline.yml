@@ -249,27 +249,40 @@ jobs:
       - name: List Files in Context
         run: ls -R   
         
-      - name: Pull Latest Artifact from AWS CodeArtifact (or S3)
+      # Step to Get Latest Package Version from AWS CodeArtifact
+      - name: Get Latest Version of Package
         if: env.should_deploy == 'true'
         run: |
-          # Example for pulling from AWS CodeArtifact
+          # Fetch the latest version of the package from CodeArtifact
+          latest_version=$(aws codeartifact list-package-versions \
+            --domain aeiforo \
+            --domain-owner 061039767866 \
+            --repository pypi-store \
+            --package sustainos \
+            --query 'versions[0].version' \
+            --output text)
+          echo "Latest version: $latest_version"
+          echo "LATEST_VERSION=$latest_version" >> $GITHUB_ENV
+  
+      # Step to Pull the Latest Artifact based on Version
+      - name: Pull Latest Artifact from AWS CodeArtifact
+        if: env.should_deploy == 'true'
+        run: |
+          # Fetch the artifact based on the latest version obtained in the previous step
           aws codeartifact get-package-version-assets \
             --domain aeiforo \
             --domain-owner 061039767866 \
             --repository pypi-store \
             --package sustainos \
-            --package-version latest \
+            --package-version ${{ env.LATEST_VERSION }} \
             --output json \
             | jq -r '.assetSummary[0].asset | .location' \
             | xargs -I {} aws s3 cp {} .
   
-          # OR, if it's from S3
-          # aws s3 cp s3://my-bucket/sustainos-latest.zip .
-  
+      # Step to Unzip Artifact
       - name: Unzip Artifact
         if: env.should_deploy == 'true'
         run: |
-          # Make sure the file is downloaded and exists before unzipping
           if [ -f sustainos-latest.zip ]; then
             unzip -o sustainos-latest.zip -d ./artifact-dir
           else
@@ -277,6 +290,7 @@ jobs:
             exit 1
           fi
   
+      # Step to Build Docker Image with Unzipped Artifact
       - name: Build Docker Image with Artifact
         if: env.should_deploy == 'true'
         run: |
