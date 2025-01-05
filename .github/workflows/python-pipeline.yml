@@ -236,7 +236,7 @@ jobs:
           name: sustainos_cement-package
           path: dist/*
 
-      - name: Pull Latest Package from AWS CodeArtifact
+      - name: Pull Specific Version of Package from AWS CodeArtifact
         if: env.should_deploy == 'true'
         run: |
           mkdir -p artifact-dir
@@ -246,19 +246,20 @@ jobs:
             --repository pypi-store \
             --format pypi \
             --package sustainos_cement \
-            --package-version latest \
+            --package-version 1.0.31 \
             --asset dist \
-            artifact-dir/package-latest.tar.gz
+            artifact-dir/package-1.0.31.tar.gz
           
       - name: Extract Package
         if: env.should_deploy == 'true'
         run: |
-          tar -xzf artifact-dir/package-latest.tar.gz -C artifact-dir
+          tar -xzf artifact-dir/package-1.0.31.tar.gz -C artifact-dir
           
       - name: Build Docker Image with Artifact
         if: env.should_deploy == 'true'
         run: |
           docker build -t my-app-image ./artifact-dir
+
 
 
       
