@@ -248,12 +248,12 @@ jobs:
             --package sustainos \
             --package-version 1.0.1 \
             --asset dist \
-            artifact-dir/package-1.0.1.tar.gz
+            artifact-dir/package-1.0.31.tar.gz
           
       - name: Extract Package
         if: env.should_deploy == 'true'
         run: |
-          tar -xzf artifact-dir/package-1.0.1.tar.gz -C artifact-dir
+          tar -xzf artifact-dir/package-1.0.31.tar.gz -C artifact-dir
           
       - name: Build Docker Image with Artifact
         if: env.should_deploy == 'true'
