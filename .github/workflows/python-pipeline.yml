@@ -236,6 +236,9 @@ jobs:
           name: sustainos_cement-package
           path: dist/*
 
+      - name: List Files in Context
+        run: ls -R  
+        
       - name: Verify Requirements File
         run: |
           if [ ! -f requirements.txt ]; then
