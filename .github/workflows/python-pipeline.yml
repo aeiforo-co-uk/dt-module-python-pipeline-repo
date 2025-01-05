@@ -246,10 +246,11 @@ jobs:
             exit 1
           fi
           
+      # Step to Build Docker Images
       - name: Build Docker Image with Artifact
         if: env.should_deploy == 'true'
         run: |
-          docker build -t my-app-image ./artifact-dir
+          docker build -t my-app-image .
 
       
       - name: Set up Docker image for deployment
