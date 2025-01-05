@@ -239,21 +239,17 @@ jobs:
       - name: List Files in Context
         run: ls -R  
         
-      - name: Verify Requirements File
+      - name: Check if requirements.txt exists
         run: |
           if [ ! -f sustainos/requirements.txt ]; then
             echo "Error: requirements.txt not found!"
             exit 1
+          else
+            echo "requirements.txt found, proceeding..."
           fi
-
-      - name: List Files in Context
-        run: ls -R   
-        
-      # Step to Get Latest Package Version from AWS CodeArtifact
-      - name: Get Latest Version of Package
-        if: env.should_deploy == 'true'
+      
+      - name: Get Latest Package Version from CodeArtifact
         run: |
-          # Fetch the latest version of the package from CodeArtifact
           latest_version=$(aws codeartifact list-package-versions \
             --domain aeiforo \
             --domain-owner 061039767866 \
@@ -263,25 +259,24 @@ jobs:
             --output text)
           echo "Latest version: $latest_version"
           echo "LATEST_VERSION=$latest_version" >> $GITHUB_ENV
-  
-      # Step to Pull the Latest Artifact based on Version
-      - name: Pull Latest Artifact from AWS CodeArtifact
-        if: env.should_deploy == 'true'
+      
+      - name: Download Artifact from CodeArtifact
         run: |
-          # Fetch the artifact based on the latest version obtained in the previous step
+          if [ -z "$LATEST_VERSION" ]; then
+            echo "Error: No version found!"
+            exit 1
+          fi
           aws codeartifact get-package-version-assets \
             --domain aeiforo \
             --domain-owner 061039767866 \
             --repository pypi-store \
             --package sustainos \
-            --package-version ${{ env.LATEST_VERSION }} \
-            --output json \
-            | jq -r '.assetSummary[0].asset | .location' \
+            --package-version $LATEST_VERSION \
+            --query 'assetSummary[0].asset.location' \
+            --output text \
             | xargs -I {} aws s3 cp {} .
-  
-      # Step to Unzip Artifact
+          
       - name: Unzip Artifact
-        if: env.should_deploy == 'true'
         run: |
           if [ -f sustainos-latest.zip ]; then
             unzip -o sustainos-latest.zip -d ./artifact-dir
@@ -289,6 +284,7 @@ jobs:
             echo "Error: sustainos-latest.zip not found!"
             exit 1
           fi
+
   
       # Step to Build Docker Image with Unzipped Artifact
       - name: Build Docker Image with Artifact
