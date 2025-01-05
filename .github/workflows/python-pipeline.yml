@@ -281,6 +281,11 @@ jobs:
           docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:${NEW_VERSION_TAG}
           docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
 
+      - name: Start Docker Container
+        if: env.should_deploy == 'true'
+        run: |
+          docker run -d -p 8000:8000 --name my-app-container my-app-image:latest
+
       - name: List Docker Images
         run: |
           sudo docker images
