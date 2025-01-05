@@ -281,16 +281,26 @@ jobs:
           docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:${NEW_VERSION_TAG}
           docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
 
-      - name: Start Docker Container
+
+      - name: SSH to EC2 and pull Docker image
         if: env.should_deploy == 'true'
         run: |
-          docker run -d -p 8000:8000 --name my-app-container my-app-image:latest
-
-      - name: List Docker Images
+          ssh -i ${{ secrets.EC2_SSH_KEY }} ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
+            # Authenticate Docker to AWS ECR
+            aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+        
+            # Pull the Docker image from ECR
+            docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
+        
+            # Run the container
+            docker run -d -p 9000:9000 --name my-app-container ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
+          EOF
+      
+      - name: List Docker Images on EC2
         run: |
-          sudo docker images
-
-      - name: List Running Containers
+          ssh -i ${{ secrets.EC2_SSH_KEY }} ec2-user@${{ secrets.EC2_PUBLIC_IP }} "sudo docker images"
+      
+      - name: List Running Containers on EC2
         run: |
-          sudo docker ps
-    
+          ssh -i ${{ secrets.EC2_SSH_KEY }} ec2-user@${{ secrets.EC2_PUBLIC_IP }} "sudo docker ps"
+          
