@@ -307,6 +307,10 @@ jobs:
               echo "Docker is already installed"
             fi
       
+            # Add ec2-user to Docker group to allow non-root access to Docker
+            sudo usermod -aG docker ec2-user
+            newgrp docker
+      
             # Authenticate Docker to AWS ECR
             aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
       
