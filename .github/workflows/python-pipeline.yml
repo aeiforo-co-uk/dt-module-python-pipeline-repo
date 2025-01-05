@@ -159,7 +159,7 @@ jobs:
   build_and_publish_package:
     name: Build, Publish, and Deploy Package
     runs-on: ubuntu-latest
-    # needs: coverage_and_sonarqube
+    needs: coverage_and_sonarqube
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -236,6 +236,15 @@ jobs:
           name: sustainos-package
           path: dist/*
 
+      - name: List Files in Context
+        run: ls -R  
+        
+      - name: Verify Requirements File
+        run: |
+          if [ ! -f sustainos/requirements.txt ]; then
+            echo "Error: requirements.txt not found!"
+            exit 1
+          fi
           
       - name: Build Docker Image with Artifact
         if: env.should_deploy == 'true'
