@@ -241,7 +241,7 @@ jobs:
         
       - name: Verify Requirements File
         run: |
-          if [ ! -f requirements.txt ]; then
+          if [ ! -f sustainos/requirements.txt ]; then
             echo "Error: requirements.txt not found!"
             exit 1
           fi
