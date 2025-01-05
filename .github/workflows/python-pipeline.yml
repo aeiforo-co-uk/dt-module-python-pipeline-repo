@@ -235,7 +235,17 @@ jobs:
         with:
           name: sustainos_cement-package
           path: dist/*
-          
+
+      - name: Verify Requirements File
+        run: |
+          if [ ! -f requirements.txt ]; then
+            echo "Error: requirements.txt not found!"
+            exit 1
+          fi
+
+      - name: List Files in Context
+        run: ls -R   
+        
        # Step to Build Docker Images
       - name: Build Docker Image with Artifact
         if: env.should_deploy == 'true'
