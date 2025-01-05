@@ -236,6 +236,8 @@ jobs:
           name: sustainos-package
           path: dist/*
 
+      
+
       - name: Pull Specific Version of Package from AWS CodeArtifact
         if: env.should_deploy == 'true'
         run: |
@@ -246,7 +248,7 @@ jobs:
             --repository pypi-store \
             --format pypi \
             --package sustainos \
-            --package-version 1.0.1 \
+            --package-version 1.0.31 \
             --asset dist \
             artifact-dir/package-1.0.31.tar.gz
           
