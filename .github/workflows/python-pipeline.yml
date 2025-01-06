@@ -145,7 +145,7 @@ jobs:
         with:
           projectBaseDir: .
           args: >
-            -Dsonar.sources=src/tests
+            -Dsonar.sources=sustainos/tests
             -Dsonar.projectKey=Python_app
             -Dsonar.python.coverage.reportPaths=sustainos/tests/coverage.xml
         env:
