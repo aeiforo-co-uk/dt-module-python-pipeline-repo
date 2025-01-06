@@ -145,6 +145,7 @@ jobs:
         with:
           projectBaseDir: .
           args: >
+            -Dsonar.projectKey=Python_app
             -Dsonar.sources=.
             -Dsonar.exclusions=**/tests/**
             -Dsonar.python.coverage.reportPaths=coverage.xml
