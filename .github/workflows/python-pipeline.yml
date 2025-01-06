@@ -146,7 +146,7 @@ jobs:
           projectBaseDir: .
           args: >
             -Dsonar.projectKey=Python_app
-            -Dsonar.sources=.
+            -Dsonar.sources=sustainos
             -Dsonar.python.coverage.reportPaths=coverage.xml
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
