@@ -136,7 +136,7 @@ jobs:
 
       - name: Code Coverage
         run: |
-          pytest --cov=sustainos --cov-report=xml
+          pytest --cov=tests --cov-report=xml:tests/coverage.xml tests
           coverage report
 
       - name: SonarQube Scan
@@ -145,9 +145,9 @@ jobs:
         with:
           projectBaseDir: .
           args: >
-            -Dsonar.projectKey=Python_app
             -Dsonar.sources=tests
-            -Dsonar.python.coverage.reportPaths=coverage.xml
+            -Dsonar.projectKey=Python_app
+            -Dsonar.python.coverage.reportPaths=tests/coverage.xml
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
