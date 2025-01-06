@@ -165,12 +165,14 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
         
-  
       - name: Set Up Python
         uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-  
+    
+      - name: Install Dependencies
+        run: pip install -r requirements.txt
+      
       - name: Check for Changes
         id: changes
         run: |
