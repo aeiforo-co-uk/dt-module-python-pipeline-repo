@@ -136,7 +136,7 @@ jobs:
 
       - name: Code Coverage
         run: |
-          pytest --cov=sustainos/tests --cov-report=xml:coverage.xml sustainos/tests
+          pytest --cov=sustainos/tests --cov-report=xml:sustainos/tests/coverage.xml sustainos/tests
           coverage report
 
       - name: SonarQube Scan
