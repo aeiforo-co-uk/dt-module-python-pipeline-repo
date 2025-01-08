@@ -236,11 +236,6 @@ jobs:
           name: sustainos-package
           path: dist/*
           
-  download_and_unzip:
-    name: Download and Unzip Artifact
-    runs-on: ubuntu-latest
-    needs: build_and_publish_package
-    steps:
       - name: Download Artifact
         uses: actions/download-artifact@v4
         with:
