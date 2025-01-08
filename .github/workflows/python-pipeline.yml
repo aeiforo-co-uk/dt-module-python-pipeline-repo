@@ -242,24 +242,28 @@ jobs:
           name: sustainos-package  # Name of the artifact from the previous job
           path: artifact-output   # Directory where the artifact will be downloaded
 
+      - name: Prepare Extraction Directory
+        run: |
+          mkdir -p extracted
+      
+      - name: Unzip or Extract Artifact
+        run: |
+          if ls artifact-output/*.zip >/dev/null 2>&1; then
+            echo "Zip file found, extracting..."
+            unzip artifact-output/*.zip -d extracted
+          elif ls artifact-output/*.tar.gz >/dev/null 2>&1; then
+            echo "Tarball found, extracting..."
+            tar -xzvf artifact-output/*.tar.gz -C extracted
+          else
+            echo "No valid artifact (zip or tar.gz) found in artifact-output directory."
+            exit 1
+          fi
+      
       - name: Verify Artifact Structure
         run: |
           echo "Contents of the extracted directory:"
           ls -R extracted
-
-      - name: Unzip Artifact (or handle other formats)
-        run: |
-          mkdir -p extracted
-          if [[ $(ls artifact-output) == *.zip ]]; then
-            unzip artifact-output/*.zip -d extracted
-          elif [[ $(ls artifact-output) == *.tar.gz ]]; then
-            tar -xzvf artifact-output/*.tar.gz -C extracted
-          fi
-          if [ -d extracted/project-root ]; then
-            mv extracted/project-root/* extracted/
-            rm -r extracted/project-root
-          fi
-          echo "Artifact extracted and moved to 'extracted' directory."
+      
 
       
       - name: List Extracted Files
