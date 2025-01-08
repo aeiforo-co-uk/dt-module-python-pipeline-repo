@@ -235,54 +235,42 @@ jobs:
         with:
           name: sustainos-package
           path: dist/*
+          
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sustainos-package  # Name of the artifact from the previous job
+          path: artifact-output   # Directory where the artifact will be downloaded
 
-              # Step to SSH to EC2 and download the artifact directly from GitHub Actions
-      - name: SSH to EC2 and download Artifact
-        if: env.should_deploy == 'true'
+      - name: Prepare Extraction Directory
         run: |
-          # Create a temporary SSH key file
-          echo "${{ secrets.EC2_SSH_KEY }}" > ec2_key.pem
-          chmod 600 ec2_key.pem
+          mkdir -p extracted
       
-          # Add EC2's SSH host key to known_hosts to avoid host key verification issues
-          mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.EC2_PUBLIC_IP }} >> ~/.ssh/known_hosts
+      - name: Unzip or Extract Artifact
+        run: |
+          if ls artifact-output/*.zip >/dev/null 2>&1; then
+            echo "Zip file found, extracting..."
+            unzip artifact-output/*.zip -d extracted
+          elif ls artifact-output/*.tar.gz >/dev/null 2>&1; then
+            echo "Tarball found, extracting..."
+            tar -xzvf artifact-output/*.tar.gz -C extracted
+          else
+            echo "No valid artifact (zip or tar.gz) found in artifact-output directory."
+            exit 1
+          fi
       
-          # SSH to the EC2 instance and download the artifact from GitHub
-          ssh -i ec2_key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
-            # Variables
-            ARTIFACT_NAME="sustainos-package"
-            ARTIFACT_URL="https://api.github.com/repos/${{ github.repository }}/actions/artifacts"
-            
-            # Fetch artifact download URL using GitHub API (need to use GitHub token for authentication)
-            ARTIFACT_DOWNLOAD_URL=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" $ARTIFACT_URL | jq -r ".artifacts[] | select(.name==\"$ARTIFACT_NAME\") | .archive_download_url")
-              
-            
-            # Download the artifact to EC2 instance
-            curl -L -o /home/ec2-user/artifact.tar.gz -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              "$ARTIFACT_DOWNLOAD_URL"
+      - name: Verify Artifact Structure
+        run: |
+          echo "Contents of the extracted directory:"
+          ls -R extracted
+      
 
-            # Prepare directory for extraction
-            mkdir -p /home/ec2-user/artifacts
-            mv /home/ec2-user/artifact.tar.gz /home/ec2-user/artifacts/
+      
+      - name: List Extracted Files
+        run: |
+          echo "Listing contents of the extracted directory:"
+          ls -R extracted
 
-            # Extract the artifact
-            cd /home/ec2-user/artifacts
-            echo "Extracting artifact..."
-            if ls *.zip >/dev/null 2>&1; then
-              unzip *.zip -d extracted
-            elif ls *.tar.gz >/dev/null 2>&1; then
-              tar -xzvf *.tar.gz -C extracted
-            else
-              echo "No valid artifact (zip or tar.gz) found."
-              exit 1
-            fi
-
-            # Verify the artifact structure
-            echo "Contents of the extracted directory:"
-            ls -R extracted
-          EOF
-  
       
       # Step to Build Docker Images
       - name: Build Docker Image with Artifact
