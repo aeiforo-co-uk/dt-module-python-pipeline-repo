@@ -250,8 +250,9 @@ jobs:
       - name: Unzip Artifact
         run: |
           mkdir -p extracted
-          unzip artifact-output/* -d extracted
+          python -m zipfile -e artifact-output/*.whl extracted
           echo "Artifact extracted to 'extracted' directory."
+
           
       # Step to Build Docker Images
       - name: Build Docker Image with Artifact
