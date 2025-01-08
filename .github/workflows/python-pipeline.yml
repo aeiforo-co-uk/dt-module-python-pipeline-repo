@@ -253,75 +253,42 @@ jobs:
           echo "Listing contents of the extracted directory:"
           ls -R extracted
 
-      # - name: Download Artifact
-      #   uses: actions/download-artifact@v4
-      #   with:
-      #     name: sustainos-package  # Name of the artifact from the previous job
-      #     path: artifact-output   # Directory where the artifact will be downloaded
-
-      # - name: Prepare Extraction Directory
-      #   run: |
-      #     mkdir -p extracted
       
-      # - name: Unzip or Extract Artifact
-      #   run: |
-      #     if ls artifact-output/*.zip >/dev/null 2>&1; then
-      #       echo "Zip file found, extracting..."
-      #       unzip artifact-output/*.zip -d extracted
-      #     elif ls artifact-output/*.tar.gz >/dev/null 2>&1; then
-      #       echo "Tarball found, extracting..."
-      #       tar -xzvf artifact-output/*.tar.gz -C extracted
-      #     else
-      #       echo "No valid artifact (zip or tar.gz) found in artifact-output directory."
-      #       exit 1
-      #     fi
+      # Step to Build Docker Images
+      - name: Build Docker Image with Artifact
+        if: ${{ env.should_deploy == 'true' }}
+        run: |
+          docker build --build-arg ARTIFACT_PATH=extracted -t sustainos-image .
       
-      # - name: Verify Artifact Structure
-      #   run: |
-      #     echo "Contents of the extracted directory:"
-      #     ls -R extracted
+      - name: Set up Docker image for deployment
+        if: ${{ env.should_deploy == 'true' }}
+        env:
+          AWS_REGION: us-east-1
+          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+          ECR_REPO_NAME: ${{ secrets.ECR_REPO_NAME }}
+        run: |
+          # Retrieve the highest existing version tag (v1, v2, ...) and increment it
+          EXISTING_TAG=$(aws ecr describe-images \
+            --repository-name $ECR_REPO_NAME \
+            --query 'imageDetails[].imageTags[]' \
+            --output text | grep -o 'v[0-9]*' | sed 's/v//' | sort -n | tail -1 || echo 0)
       
-
+          # Increment the version for the new tag
+          NEW_VERSION_TAG=v$((EXISTING_TAG + 1))
       
-      # - name: List Extracted Files
-      #   run: |
-      #     echo "Listing contents of the extracted directory:"
-      #     ls -R extracted
-
+          # Build the Docker image with the version tag and latest tag
+          docker build -t $ECR_REPO_NAME:${NEW_VERSION_TAG} -t $ECR_REPO_NAME:latest .
       
-      # # Step to Build Docker Images
-      # - name: Build Docker Image with Artifact
-      #   if: env.should_deploy == 'true'
-      #   run: |
-      #     docker build --build-arg ARTIFACT_PATH=extracted -t sustainos-image .
-
+          # Tag the image for ECR with both the version tag and latest tag
+          docker tag $ECR_REPO_NAME:${NEW_VERSION_TAG} $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_NAME:${NEW_VERSION_TAG}
+          docker tag $ECR_REPO_NAME:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_NAME:latest
       
-      # - name: Set up Docker image for deployment
-      #   if: env.should_deploy == 'true'
-      #   run: |
-      #     # Retrieve the highest existing version tag (v1, v2, ...) and increment it
-      #     EXISTING_TAG=$(aws ecr describe-images \
-      #       --repository-name ${{ secrets.ECR_REPO_NAME }} \
-      #       --query 'imageDetails[].imageTags[]' \
-      #       --output text | grep -o 'v[0-9]*' | sed 's/v//' | sort -n | tail -1 2>/dev/null || echo 0)
-          
-      #     # Increment the version for the new tag
-      #     NEW_VERSION_TAG=v$((EXISTING_TAG + 1))
-          
-      #     # Build the Docker image with the version tag and latest tag
-      #     docker build -t ${{ secrets.ECR_REPO_NAME }}:${NEW_VERSION_TAG} -t ${{ secrets.ECR_REPO_NAME }}:latest .
-          
-      #     # Tag the image for ECR with both the version tag and latest tag
-      #     docker tag ${{ secrets.ECR_REPO_NAME }}:${NEW_VERSION_TAG} ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:${NEW_VERSION_TAG}
-      #     docker tag ${{ secrets.ECR_REPO_NAME }}:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
-          
-      #     # Authenticate Docker to AWS ECR
-      #     aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
-          
-      #     # Push the image to ECR with both tags
-      #     docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:${NEW_VERSION_TAG}
-      #     docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
-
+          # Authenticate Docker to AWS ECR
+          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+      
+          # Push the image to ECR with both tags
+          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_NAME:${NEW_VERSION_TAG}
+          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_NAME:latest
       
       # - name: SSH to EC2 and deploy Docker container
       #   if: env.should_deploy == 'true'
