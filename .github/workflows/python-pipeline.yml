@@ -54,7 +54,7 @@ jobs:
         - name: Install dependencies
           run: |
             python -m pip install --upgrade pip
-            pip install -r sustainos/requirements.txt
+            pip install -r */requirements.txt
             if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
             pip install drf_yasg
             pip install pytest pytest-cov djangorestframework
@@ -70,7 +70,7 @@ jobs:
           env:
             PYTHONPATH: ./*
             DJANGO_SETTINGS_MODULE: ncarp.settings  # Replace with your actual Django settings module
-          run: python sustainos/manage.py test
+          run: python */manage.py test
   
   pytest:
     name: Run Pytest
@@ -88,7 +88,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r sustainos/requirements.txt
+          pip install -r */requirements.txt
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           pip install drf_yasg
           pip install pytest pytest-cov djangorestframework
@@ -239,13 +239,7 @@ jobs:
       - name: List Files in Context
         run: ls -R  
         
-      - name: Verify Requirements File
-        run: |
-          if [ ! -f sustainos/requirements.txt ]; then
-            echo "Error: requirements.txt not found!"
-            exit 1
-          fi
-          
+    
       # Step to Build Docker Images
       - name: Build Docker Image with Artifact
         if: env.should_deploy == 'true'
