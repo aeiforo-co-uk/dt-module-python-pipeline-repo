@@ -148,7 +148,7 @@ jobs:
             -Dsonar.projectKey=Python_app
             -Dsonar.sources=sustainos/
             -Dsonar.inclusions=sustainos/tests/**
-            -Dsonar.python.coverage.reportPaths=/tests/coverage.xml
+            -Dsonar.python.coverage.reportPaths=coverage.xml
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
