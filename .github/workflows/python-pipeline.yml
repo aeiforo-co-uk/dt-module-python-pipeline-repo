@@ -264,6 +264,16 @@ jobs:
           echo "Contents of the extracted directory:"
           ls -R extracted
       
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sustainos-package  # Name of the artifact from the previous job
+          path: artifact-output   # Directory where the artifact will be downloaded
+
+      - name: Build Docker Image with Artifact
+        if: env.should_deploy == 'true'
+        run: |
+          docker build --build-arg ARTIFACT_PATH=artifact-output -t sustainos-image .
 
       
       - name: List Extracted Files
