@@ -287,7 +287,13 @@ jobs:
       
           # SSH to the EC2 instance and run commands
           ssh -i ec2_key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << EOF
+            set -e
             CONTAINER_NAME="${{ secrets.CONTAINER_NAME }}"
+            ECR_IMAGE="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest"
+      
+            # Clear disk space by removing unused Docker images
+            echo "Cleaning up unused Docker images and containers..."
+            docker system prune -af || true
       
             # Install Docker if it's not installed
             if ! command -v docker &> /dev/null
@@ -317,7 +323,7 @@ jobs:
       
             # Pull the Docker image from ECR
             echo "Pulling the latest Docker image..."
-            docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
+            docker pull \$ECR_IMAGE
       
             # Run the container
             echo "Deploying the new container..."
@@ -332,7 +338,7 @@ jobs:
               -e EMAIL_HOST_USER="${{ secrets.EMAIL_HOST_USER }}" \
               -e EMAIL_HOST_PASSWORD="${{ secrets.EMAIL_HOST_PASSWORD }}" \
               -e SECRET_KEY="${{ secrets.SECRET_KEY }}" \
-              ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
+              \$ECR_IMAGE
       
             # Verify the container is running
             if ! docker ps -q -f name=\$CONTAINER_NAME; then
