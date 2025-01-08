@@ -245,7 +245,7 @@ jobs:
       - name: Unzip Artifact
         run: |
           mkdir -p extracted
-          python -m zipfile -e artifact-output/*.whl extracted
+          unzip artifact-output/*.zip -d extracted
           echo "Artifact extracted to 'extracted' directory."
 
           
