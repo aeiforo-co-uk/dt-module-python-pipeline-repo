@@ -255,8 +255,8 @@ jobs:
             ARTIFACT_URL="https://api.github.com/repos/${{ github.repository }}/actions/artifacts"
             
             # Fetch artifact download URL using GitHub API (need to use GitHub token for authentication)
-            ARTIFACT_DOWNLOAD_URL=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              $ARTIFACT_URL | jq -r '.artifacts[] | select(.name=="$ARTIFACT_NAME") | .archive_download_url')
+            ARTIFACT_DOWNLOAD_URL=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" $ARTIFACT_URL | jq -r ".artifacts[] | select(.name==\"$ARTIFACT_NAME\") | .archive_download_url")
+              
             
             # Download the artifact to EC2 instance
             curl -L -o /home/ec2-user/artifact.tar.gz -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
