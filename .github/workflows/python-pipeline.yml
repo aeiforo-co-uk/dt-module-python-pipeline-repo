@@ -248,6 +248,10 @@ jobs:
           unzip artifact-output/*.zip -d extracted
           echo "Artifact extracted to 'extracted' directory."
 
+      - name: List Extracted Files
+        run: |
+          echo "Listing contents of the extracted directory:"
+          ls -R extracted
           
       # Step to Build Docker Images
       - name: Build Docker Image with Artifact
