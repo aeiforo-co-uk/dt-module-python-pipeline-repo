@@ -147,7 +147,7 @@ jobs:
           args: >
             -Dsonar.projectKey=Python_app
             -Dsonar.sources=sustainos/
-            -Dsonar.python.coverage.reportPaths=coverage.xml
+            -Dsonar.python.coverage.reportPaths=coverage.xml			
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
@@ -235,11 +235,24 @@ jobs:
         with:
           name: sustainos-package
           path: dist/*
-
-      - name: List Files in Context
-        run: ls -R  
-        
-    
+          
+  download_and_unzip:
+    name: Download and Unzip Artifact
+    runs-on: ubuntu-latest
+    needs: build_and_publish_package
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sustainos-package # Name of the artifact from the previous job
+          path: artifact-output   # Directory where the artifact will be downloaded
+      
+      - name: Unzip Artifact
+        run: |
+          mkdir -p extracted
+          unzip artifact-output/* -d extracted
+          echo "Artifact extracted to 'extracted' directory."
+          
       # Step to Build Docker Images
       - name: Build Docker Image with Artifact
         if: env.should_deploy == 'true'
