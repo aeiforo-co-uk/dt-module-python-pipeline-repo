@@ -278,7 +278,8 @@ jobs:
       - name: Build Docker Image
         if: ${{ env.should_deploy == 'true' }}
         run: |
-          docker build --build-arg ARTIFACT_PATH=docker-context/artifact -t sustainos-image .
+          docker build --build-arg ARTIFACT_PATH=docker-context/artifact/sustainos-1.0.90/sustainos -t sustainos-app .
+
 
       # Tag and Push Docker Image to ECR
       - name: Tag and Push Docker Image
