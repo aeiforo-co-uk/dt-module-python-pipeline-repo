@@ -263,7 +263,7 @@ jobs:
           # Extract the latest artifact from 'dist/*' to the Docker build context
           unzip artifact-output/*.zip -d docker-context/artifact
           echo "Artifact extracted to 'docker-context/artifact' directory."
-          docker build --build-arg ARTIFACT_PATH=docker-context/artifact -t sustainos-image -f dt-backend-repo/Dockerfile .
+          docker build --build-arg ARTIFACT_PATH=docker-context/artifact -t sustainos-image .
 
       
       # - name: Set up Docker image for deployment
