@@ -242,29 +242,58 @@ jobs:
           name: sustainos-package # Name of the artifact from the previous job
           path: artifact-output   # Directory where the artifact will be downloaded
       
-      - name: Unzip Artifact
-        run: |
-          mkdir -p extracted
-          unzip artifact-output/*.zip -d extracted
-          echo "Artifact extracted to 'extracted' directory."
+      # - name: Unzip Artifact
+      #   run: |
+      #     mkdir -p extracted
+      #     unzip artifact-output/*.zip -d extracted
+      #     echo "Artifact extracted to 'extracted' directory."
       
-      - name: List Extracted Files
-        run: |
-          echo "Listing contents of the extracted directory:"
-          ls -R extracted
-
-      
-      # Step to Build Docker Images
-      # Step to Build Docker Images
-      - name: Build Docker Image with Artifact
-        if: ${{ env.should_deploy == 'true' }}
+     # Unzip and move artifact to docker-context
+      - name: Prepare Artifact for Docker Build
         run: |
           mkdir -p docker-context/artifact
-          # Extract the latest artifact from 'dist/*' to the Docker build context
-          unzip artifact-output/*.zip -d docker-context/artifact
-          echo "Artifact extracted to 'docker-context/artifact' directory."
+          if ls artifact-output/*.zip >/dev/null 2>&1; then
+            echo "Extracting zip artifact..."
+            unzip artifact-output/*.zip -d docker-context/artifact
+          elif ls artifact-output/*.tar.gz >/dev/null 2>&1; then
+            echo "Extracting tar.gz artifact..."
+            tar -xzvf artifact-output/*.tar.gz -C docker-context/artifact
+          else
+            echo "No valid artifact (zip or tar.gz) found in artifact-output."
+            exit 1
+          fi
+
+      # Debug: List docker-context/artifact files
+      - name: List Docker Context Files
+        run: |
+          echo "Listing contents of 'docker-context/artifact':"
+          ls -R docker-context/artifact
+
+      # Build Docker Image with Artifact
+      - name: Build Docker Image
+        if: ${{ env.should_deploy == 'true' }}
+        run: |
           docker build --build-arg ARTIFACT_PATH=docker-context/artifact -t sustainos-image .
 
+      # Tag and Push Docker Image to ECR
+      - name: Tag and Push Docker Image
+        if: ${{ env.should_deploy == 'true' }}
+        env:
+          AWS_REGION: us-east-1
+          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+          ECR_REPO_NAME: ${{ secrets.ECR_REPO_NAME }}
+        run: |
+          EXISTING_TAG=$(aws ecr describe-images \
+            --repository-name $ECR_REPO_NAME \
+            --query 'imageDetails[].imageTags[]' \
+            --output text | grep -o 'v[0-9]*' | sed 's/v//' | sort -n | tail -1 || echo 0)
+          NEW_VERSION_TAG=v$((EXISTING_TAG + 1))
+          docker build -t $ECR_REPO_NAME:${NEW_VERSION_TAG} -t $ECR_REPO_NAME:latest .
+          docker tag $ECR_REPO_NAME:${NEW_VERSION_TAG} $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_NAME:${NEW_VERSION_TAG}
+          docker tag $ECR_REPO_NAME:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_NAME:latest
+          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_NAME:${NEW_VERSION_TAG}
+          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_NAME:latest
       
       - name: Set up Docker image for deployment
         if: ${{ env.should_deploy == 'true' }}
