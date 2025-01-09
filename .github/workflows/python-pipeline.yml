@@ -279,6 +279,11 @@ jobs:
         if: ${{ env.should_deploy == 'true' }}
         run: |
           docker build --build-arg ARTIFACT_PATH=$(ls -d docker-context/artifact/sustainos-*/sustainos | head -n 1) -t sustainos-app .
+     
+      - name: Debug Artifact Path
+        run: |
+          echo "Artifact path: ${ARTIFACT_PATH}"
+          ls -R ${ARTIFACT_PATH}
 
 
       # Tag and Push Docker Image to ECR
