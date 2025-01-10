@@ -281,7 +281,7 @@ jobs:
         if: env.should_deploy == 'true'
         run: |
           # Navigate to the extracted folder and build the Docker image
-          cd /home/ec2-user/extracted/sustainos
+          cd /home/ec2-user/extracted
           docker build -t my-app-image .
   
       # Step 6: Set up Docker image for deployment to ECR
