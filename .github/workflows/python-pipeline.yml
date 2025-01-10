@@ -251,9 +251,8 @@ jobs:
           ls
           echo "Searching for requirements.txt..."
           find extracted -name "requirements.txt" -type f
-          
       
-     # Unzip and move artifact to docker-context
+      # Unzip and move artifact to docker-context
       - name: Prepare Artifact for Docker Build
         run: |
           mkdir -p docker-context/artifact
@@ -267,30 +266,30 @@ jobs:
             echo "No valid artifact (zip or tar.gz) found in artifact-output."
             exit 1
           fi
-
+      
       # Debug: List docker-context/artifact files
       - name: List Docker Context Files
         run: |
           echo "Listing contents of 'docker-context/artifact':"
           ls -R docker-context/artifact
-          
+      
       - name: List Artifact Files in Docker Context
         run: |
           echo "Listing files in docker-context/artifact:"
           ls -R docker-context/artifact || echo "No files found in docker-context/artifact."
-
+      
       # Build Docker Image with Artifact
       - name: Build Docker Image
         if: ${{ env.should_deploy == 'true' }}
         run: |
           docker build --build-arg ARTIFACT_PATH=docker-context/artifact/sustainos-*/sustainos -t sustainos-app .
-     
+      
+      # Debug Artifact Path
       - name: Debug Artifact Path
         run: |
           echo "Artifact path: ${ARTIFACT_PATH}"
           ls -R ${ARTIFACT_PATH}
-
-
+      
       # Tag and Push Docker Image to ECR
       - name: Tag and Push Docker Image
         if: ${{ env.should_deploy == 'true' }}
@@ -310,6 +309,7 @@ jobs:
           aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
           docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_NAME:${NEW_VERSION_TAG}
           docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_NAME:latest
+
       
       - name: Set up Docker image for deployment
         if: ${{ env.should_deploy == 'true' }}
