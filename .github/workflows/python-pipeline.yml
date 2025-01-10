@@ -249,6 +249,8 @@ jobs:
           echo "Artifact extracted to 'extracted' directory."
           pwd
           ls
+          echo "Searching for requirements.txt..."
+          find extracted -name "requirements.txt" -type f
           
       
      # Unzip and move artifact to docker-context
