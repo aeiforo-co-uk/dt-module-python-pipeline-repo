@@ -242,11 +242,14 @@ jobs:
           name: sustainos-package # Name of the artifact from the previous job
           path: artifact-output   # Directory where the artifact will be downloaded
       
-      # - name: Unzip Artifact
-      #   run: |
-      #     mkdir -p extracted
-      #     unzip artifact-output/*.zip -d extracted
-      #     echo "Artifact extracted to 'extracted' directory."
+      - name: Unzip Artifact
+        run: |
+          mkdir -p extracted
+          unzip artifact-output/*.zip -d extracted
+          echo "Artifact extracted to 'extracted' directory."
+          pwd
+          ls
+          
       
      # Unzip and move artifact to docker-context
       - name: Prepare Artifact for Docker Build
