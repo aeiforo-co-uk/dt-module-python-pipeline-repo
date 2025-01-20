@@ -46,6 +46,7 @@ jobs:
             -Dsonar.tests=src
             -Dsonar.test.inclusions="**/*.test.js"
             -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+            
       # Step 1.6: Check SonarQube Quality Gate
       - name: SonarQube Quality Gate
         uses: sonarsource/sonarcloud-quality-gate-action@v1
