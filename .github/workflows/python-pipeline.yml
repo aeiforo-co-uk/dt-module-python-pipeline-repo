@@ -236,27 +236,39 @@ jobs:
           name: sustainos-package
           path: dist/*
 
-       # Step 1: Download the artifact from the previous job
-      - name: Download Artifact
+       # Step 1: Clean up old artifacts
+      - name: Clean Up Old Artifacts
+        run: |
+          echo "Cleaning up old artifacts..."
+          rm -rf artifact-output extracted
+          echo "Cleanup complete."
+      
+      # Step 2: Download the latest artifact
+      - name: Download Latest Artifact
         uses: actions/download-artifact@v4
         with:
           name: sustainos-package  # The name of the artifact from the previous job
           path: artifact-output    # Directory where the artifact will be downloaded
       
-      # Step 2: Unzip the downloaded artifact locally for debugging
-      - name: Unzip Artifact Locally
+      # Step 3: Unzip the latest artifact
+      - name: Unzip Latest Artifact
         run: |
           mkdir -p extracted
           unzip artifact-output/*.zip -d extracted
           echo "Artifact extracted to 'extracted' directory."
           pwd
-          ls
-          echo "Searching for requirements.txt..."
-          find extracted -name "requirements.txt" -type f
-  
-      - name: Get version from version.txt
+          ls -l extracted
+          echo "Searching for version.txt..."
+          find extracted -name "version.txt" -type f
+      
+      # Step 4: Get version from version.txt
+      - name: Get Version from version.txt
         id: version
-        run: echo "::set-output name=version::$(cat version.txt)"
+        run: |
+          VERSION=$(cat extracted/version.txt)
+          echo "::set-output name=version::${VERSION}"
+          echo "Version detected: ${VERSION}"
+
       
       - name: Build Docker Image with Version
         run: |
