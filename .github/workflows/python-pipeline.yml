@@ -255,61 +255,61 @@ jobs:
           find extracted -name "requirements.txt" -type f
   
       # Step 3: Upload the artifact to EC2
-      - name: Upload Artifact to EC2
-        uses: appleboy/scp-action@v0.1.6
-        with:
-          host: ${{ secrets.EC2_PUBLIC_IP }}  # EC2 host (IP or DNS)
-          username: ec2-user            # EC2 username
-          key: ${{ secrets.EC2_SSH_KEY }}  # Private key for SSH access
-          source: artifact-output/*     # Source path (from the artifact download)
-          target: /home/ec2-user/artifact/  # Target path on EC2 server
+      # - name: Upload Artifact to EC2
+      #   uses: appleboy/scp-action@v0.1.6
+      #   with:
+      #     host: ${{ secrets.EC2_PUBLIC_IP }}  # EC2 host (IP or DNS)
+      #     username: ec2-user            # EC2 username
+      #     key: ${{ secrets.EC2_SSH_KEY }}  # Private key for SSH access
+      #     source: artifact-output/*     # Source path (from the artifact download)
+      #     target: /home/ec2-user/artifact/  # Target path on EC2 server
   
-      # Step 4: SSH into EC2 and Unzip the Artifact
-      - name: SSH into EC2 and Unzip Artifact
-        uses: appleboy/ssh-action@v0.1.7
-        with:
-          host: ${{ secrets.EC2_PUBLIC_IP }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            echo "Unzipping artifact..."
-            mkdir -p /home/ec2-user/extracted
-            unzip /home/ec2-user/artifact/*.zip -d /home/ec2-user/extracted
-            ls -l /home/ec2-user/extracted  # Verify the extracted contents
-      # Step 5: Build Docker Image with Artifact
-      - name: Build Docker Image with Artifact
-        if: env.should_deploy == 'true'
-        run: |
-          # Navigate to the extracted folder and build the Docker image
-          cd /home/ec2-user/extracted
-          docker build -t my-app-image .
+      # # Step 4: SSH into EC2 and Unzip the Artifact
+      # - name: SSH into EC2 and Unzip Artifact
+      #   uses: appleboy/ssh-action@v0.1.7
+      #   with:
+      #     host: ${{ secrets.EC2_PUBLIC_IP }}
+      #     username: ec2-user
+      #     key: ${{ secrets.EC2_SSH_KEY }}
+      #     script: |
+      #       echo "Unzipping artifact..."
+      #       mkdir -p /home/ec2-user/extracted
+      #       unzip /home/ec2-user/artifact/*.zip -d /home/ec2-user/extracted
+      #       ls -l /home/ec2-user/extracted  # Verify the extracted contents
+      # # Step 5: Build Docker Image with Artifact
+      # - name: Build Docker Image with Artifact
+      #   if: env.should_deploy == 'true'
+      #   run: |
+      #     # Navigate to the extracted folder and build the Docker image
+      #     cd /home/ec2-user/extracted
+      #     docker build -t my-app-image .
   
-      # Step 6: Set up Docker image for deployment to ECR
-      - name: Set up Docker image for deployment
-        if: env.should_deploy == 'true'
-        run: |
-          # Retrieve the highest existing version tag (v1, v2, ...) and increment it
-          EXISTING_TAG=$(aws ecr describe-images \
-            --repository-name ${{ secrets.ECR_REPO_NAME }} \
-            --query 'imageDetails[].imageTags[]' \
-            --output text | grep -o 'v[0-9]*' | sed 's/v//' | sort -n | tail -1 2>/dev/null || echo 0)
+      # # Step 6: Set up Docker image for deployment to ECR
+      # - name: Set up Docker image for deployment
+      #   if: env.should_deploy == 'true'
+      #   run: |
+      #     # Retrieve the highest existing version tag (v1, v2, ...) and increment it
+      #     EXISTING_TAG=$(aws ecr describe-images \
+      #       --repository-name ${{ secrets.ECR_REPO_NAME }} \
+      #       --query 'imageDetails[].imageTags[]' \
+      #       --output text | grep -o 'v[0-9]*' | sed 's/v//' | sort -n | tail -1 2>/dev/null || echo 0)
           
-          # Increment the version for the new tag
-          NEW_VERSION_TAG=v$((EXISTING_TAG + 1))
+      #     # Increment the version for the new tag
+      #     NEW_VERSION_TAG=v$((EXISTING_TAG + 1))
           
-          # Build the Docker image with the version tag and latest tag
-          docker build -t ${{ secrets.ECR_REPO_NAME }}:${NEW_VERSION_TAG} -t ${{ secrets.ECR_REPO_NAME }}:latest /home/ec2-user/extracted/sustainos
+      #     # Build the Docker image with the version tag and latest tag
+      #     docker build -t ${{ secrets.ECR_REPO_NAME }}:${NEW_VERSION_TAG} -t ${{ secrets.ECR_REPO_NAME }}:latest /home/ec2-user/extracted/sustainos
           
-          # Tag the image for ECR with both the version tag and latest tag
-          docker tag ${{ secrets.ECR_REPO_NAME }}:${NEW_VERSION_TAG} ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:${NEW_VERSION_TAG}
-          docker tag ${{ secrets.ECR_REPO_NAME }}:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
+      #     # Tag the image for ECR with both the version tag and latest tag
+      #     docker tag ${{ secrets.ECR_REPO_NAME }}:${NEW_VERSION_TAG} ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:${NEW_VERSION_TAG}
+      #     docker tag ${{ secrets.ECR_REPO_NAME }}:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
           
-          # Authenticate Docker to AWS ECR
-          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+      #     # Authenticate Docker to AWS ECR
+      #     aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
           
-          # Push the image to ECR with both tags
-          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:${NEW_VERSION_TAG}
-          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
+      #     # Push the image to ECR with both tags
+      #     docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:${NEW_VERSION_TAG}
+      #     docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
       # # Debug: List docker-context/artifact files
       # - name: List Docker Context Files
       #   run: |
