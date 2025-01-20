@@ -132,7 +132,14 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: react-app-build
-          path: build.zip    
+          path: build.zip  
+          
+      # Step 2.4: Save build artifact
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: react-app-build
+          path: \  
 
   # Step 3: Dockerize and Deploy
   docker:
