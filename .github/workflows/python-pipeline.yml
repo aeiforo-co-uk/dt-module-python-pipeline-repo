@@ -254,7 +254,6 @@ jobs:
           echo "Searching for requirements.txt..."
           find extracted -name "requirements.txt" -type f
   
-      # Build Docker Image with Artifact
       - name: Get version from version.txt
         id: version
         run: echo "::set-output name=version::$(cat version.txt)"
@@ -262,8 +261,7 @@ jobs:
       - name: Build Docker Image with Version
         run: |
           docker build --build-arg ARTIFACT_VERSION=${{ steps.version.outputs.version }} -t my-app-image .
-
-  
+      
       # Set up Docker image for deployment to ECR
       - name: Set up Docker image for deployment
         if: env.should_deploy == 'true'
@@ -273,24 +271,27 @@ jobs:
             --repository-name ${{ secrets.ECR_REPO_NAME }} \
             --query 'imageDetails[].imageTags[]' \
             --output text | grep -o 'v[0-9]*' | sed 's/v//' | sort -n | tail -1 2>/dev/null || echo 0)
-          
+      
           # Increment the version for the new tag
           NEW_VERSION_TAG=v$((EXISTING_TAG + 1))
-          
+      
+          # Authenticate Docker to AWS ECR
+          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+      
           # Build the Docker image with the version tag and latest tag
-          docker build -t ${{ secrets.ECR_REPO_NAME }}:${NEW_VERSION_TAG} -t ${{ secrets.ECR_REPO_NAME }}:latest 
-          
+          docker build --build-arg ARTIFACT_VERSION=${{ steps.version.outputs.version }} \
+            -t ${{ secrets.ECR_REPO_NAME }}:${NEW_VERSION_TAG} \
+            -t ${{ secrets.ECR_REPO_NAME }}:latest .
+      
           # Tag the image for ECR with both the version tag and latest tag
           docker tag ${{ secrets.ECR_REPO_NAME }}:${NEW_VERSION_TAG} ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:${NEW_VERSION_TAG}
           docker tag ${{ secrets.ECR_REPO_NAME }}:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
-          
-          # Authenticate Docker to AWS ECR
-          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
-          
+      
           # Push the image to ECR with both tags
           docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:${NEW_VERSION_TAG}
           docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
-    
+      
+          
       
       - name: SSH to EC2 and deploy Docker container
         if: env.should_deploy == 'true'
