@@ -69,6 +69,42 @@ jobs:
       - name: Build React App
         run: npm run build
 
+      #Configure AWS Credentials
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1  
+
+      #Login to AWS CodeArtifact
+      - name: Login to AWS CodeArtifact
+        run: |
+          aws codeartifact login \
+            --tool npm \
+            --repository npm-store \
+            --domain ak \
+            --domain-owner 897729129103  
+
+      #Package and publish build to CodeArtifact
+      - name: Publish Build to CodeArtifact
+        run: |
+          aws codeartifact put-package-versions \
+            --domain ak \
+            --domain-owner 897729129103 \
+            --repository npm-store \
+            --package build-artifact \
+            --package-format generic \
+            --package-version 1.0.0 \
+            --file build.zip 
+
+       # Step 2.7: Save build artifact
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: react-app-build
+          path: build.zip    
+
       # Step 2.4: Save build artifact
       - name: Upload Artifact
         uses: actions/upload-artifact@v3
