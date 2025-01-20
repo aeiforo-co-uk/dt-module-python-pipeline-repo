@@ -130,6 +130,10 @@ jobs:
         with:
           name: react-app-build
 
+      # step 3.3:Unzip Artifact
+        -name: Unzip Artifact
+        run: unzip build.zip
+
       # Step 3.3: Build Docker image
       - name: Build Docker Image
         run: |
