@@ -271,8 +271,12 @@ jobs:
           echo "Version detected: ${VERSION}"
           echo "::set-output name=version::${VERSION}"
 
-
-      
+      - name: Debug Extracted Files
+        run: |
+          ls -R extracted
+          echo "Looking for sustainos-${ARTIFACT_VERSION}"
+    
+          
       - name: Build Docker Image with Version
         run: |
           docker build --build-arg ARTIFACT_VERSION=${{ steps.version.outputs.version }} -t my-app-image .
