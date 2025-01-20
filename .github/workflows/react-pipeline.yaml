@@ -19,10 +19,6 @@ on:
         description: 'SonarQube Project Key'
         required: true
         type: string
-      sonar-organization:
-        description: 'SonarQube Organization'
-        required: true
-        type: string
       aws-region:
         description: 'AWS Region'
         required: true
