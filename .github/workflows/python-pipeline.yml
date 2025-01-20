@@ -255,9 +255,14 @@ jobs:
           find extracted -name "requirements.txt" -type f
   
       # Build Docker Image with Artifact
-      - name: Build Docker Image with Artifact
+      - name: Get version from version.txt
+        id: version
+        run: echo "::set-output name=version::$(cat version.txt)"
+      
+      - name: Build Docker Image with Version
         run: |
-          docker build -t my-app-image .
+          docker build --build-arg ARTIFACT_VERSION=${{ steps.version.outputs.version }} -t my-app-image .
+
   
       # Set up Docker image for deployment to ECR
       - name: Set up Docker image for deployment
