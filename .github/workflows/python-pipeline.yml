@@ -250,24 +250,27 @@ jobs:
           name: sustainos-package  # The name of the artifact from the previous job
           path: artifact-output    # Directory where the artifact will be downloaded
       
-      # Step 3: Unzip the latest artifact
-      - name: Unzip Latest Artifact
+      # Step 3: Unzip the latest artifact and locate version.txt
+      - name: Unzip Latest Artifact and Locate Version
         run: |
           mkdir -p extracted
           unzip artifact-output/*.zip -d extracted
           echo "Artifact extracted to 'extracted' directory."
           pwd
           ls -l extracted
-          echo "Searching for version.txt..."
-          find extracted -name "version.txt" -type f
       
-      # Step 4: Get version from version.txt
-      - name: Get Version from version.txt
-        id: version
-        run: |
-          VERSION=$(cat extracted/version.txt)
-          echo "::set-output name=version::${VERSION}"
+          # Find the version.txt file in any nested directory
+          VERSION_FILE=$(find extracted -name "version.txt" -type f)
+          if [ -z "$VERSION_FILE" ]; then
+            echo "Error: version.txt not found in the extracted artifact."
+            exit 1
+          fi
+      
+          # Extract version number from version.txt
+          VERSION=$(cat "$VERSION_FILE")
           echo "Version detected: ${VERSION}"
+          echo "::set-output name=version::${VERSION}"
+
 
       
       - name: Build Docker Image with Version
