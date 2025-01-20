@@ -1,12 +1,44 @@
 name: React CI/CD Pipeline
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+  workflow_call:
+    inputs:
+      aws-access-key-id:
+        description: 'AWS Access Key ID'
+        required: true
+        type: string
+      aws-secret-access-key:
+        description: 'AWS Secret Access Key'
+        required: true
+        type: string
+      sonarqube-token:
+        description: 'SonarQube Token'
+        required: true
+        type: string
+      sonar-project-key:
+        description: 'SonarQube Project Key'
+        required: true
+        type: string
+      sonar-organization:
+        description: 'SonarQube Organization'
+        required: true
+        type: string
+      aws-region:
+        description: 'AWS Region'
+        required: true
+        type: string
+      aws-domain:
+        description: 'AWS CodeArtifact Domain'
+        required: true
+        type: string
+      aws-domain-owner:
+        description: 'AWS CodeArtifact Domain Owner'
+        required: true
+        type: string
+      npm-repository:
+        description: 'NPM Repository Name'
+        required: true
+        type: string
 
 jobs:
   # Step 1: Checkout, Unit Testing, and SonarQube Analysis
@@ -37,11 +69,11 @@ jobs:
       - name: SonarQube Scan
         uses: sonarsource/sonarcloud-github-action@v1.10
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_TOKEN: ${{ inputs.sonarqube-token }}
         with:
           args: >
-            -Dsonar.projectKey=<your-project-key>
-            -Dsonar.organization=<your-organization>
+            -Dsonar.projectKey=${{ inputs.sonar-project-key }}
+            -Dsonar.organization=${{ inputs.sonar-organization }}
             -Dsonar.sources=src
             -Dsonar.tests=src
             -Dsonar.test.inclusions="**/*.test.js"
@@ -74,44 +106,37 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1  
+          aws-access-key-id: ${{ inputs.aws-access-key-id }}
+          aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
+          aws-region: ${{ inputs.aws-region }}  
 
       #Login to AWS CodeArtifact
       - name: Login to AWS CodeArtifact
         run: |
           aws codeartifact login \
             --tool npm \
-            --repository npm-store \
-            --domain ak \
-            --domain-owner 897729129103  
+            --repository ${{ inputs.npm-repository }} \
+            --domain ${{ inputs.aws-domain }} \
+            --domain-owner ${{ inputs.aws-domain-owner }}
 
       #Package and publish build to CodeArtifact
       - name: Publish Build to CodeArtifact
         run: |
           aws codeartifact put-package-versions \
-            --domain ak \
-            --domain-owner 897729129103 \
-            --repository npm-store \
+            --domain ${{ inputs.aws-domain }} \
+            --domain-owner ${{ inputs.aws-domain-owner }} \
+            --repository ${{ inputs.npm-repository }} \
             --package build-artifact \
             --package-format generic \
             --package-version 1.0.0 \
             --file build.zip 
 
-       # Step 2.4: Save build artifact
+      # Step 2.4: Save build artifact
       - name: Upload Artifact
         uses: actions/upload-artifact@v3
         with:
           name: react-app-build
           path: build.zip    
-
-      # Step 2.5: Save build artifact
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: react-app-build
-          path: build/
 
   # Step 3: Dockerize and Deploy
   docker:
@@ -130,15 +155,16 @@ jobs:
         with:
           name: react-app-build
 
-      # step 3.3:Unzip Artifact
-        -name: Unzip Artifact
+      # Step 3.3: Unzip Artifact
+      - name: Unzip Artifact
         run: unzip build.zip
 
-      # Step 3.3: Build Docker image
+      # Step 3.4: Build Docker image
       - name: Build Docker Image
         run: |
           docker build -t react-app:latest .
-      # Step 3.4: Run Docker container
+
+      # Step 3.5: Run Docker container
       - name: Run Docker Container
         run: |
           docker run -d -p 3000:3000 --name react-app react-app:latest
