@@ -1,4 +1,4 @@
-name: React CI/CD Pipeline
+name: React Reusable CI/CD Pipeline
 
 on:
   workflow_call:
@@ -11,11 +11,35 @@ on:
         description: 'AWS Secret Access Key'
         required: true
         type: string
+      sonarqube-token:
+        description: 'SonarQube Token'
+        required: true
+        type: string
+      sonar-project-key:
+        description: 'SonarQube Project Key'
+        required: true
+        type: string
+      sonar-organization:
+        description: 'SonarQube Organization'
+        required: true
+        type: string
       aws-region:
         description: 'AWS Region'
         required: true
         type: string
-   
+      aws-domain:
+        description: 'AWS CodeArtifact Domain'
+        required: true
+        type: string
+      aws-domain-owner:
+        description: 'AWS CodeArtifact Domain Owner'
+        required: true
+        type: string
+      npm-repository:
+        description: 'NPM Repository Name'
+        required: true
+        type: string
+
 jobs:
   # Step 1: Checkout, Unit Testing, and SonarQube Analysis
   build-test-sonar:
@@ -78,7 +102,7 @@ jobs:
       - name: Build React App
         run: npm run build
 
-      #Configure AWS Credentials
+      # Step 2.4: Configure AWS Credentials
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -86,7 +110,7 @@ jobs:
           aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
           aws-region: ${{ inputs.aws-region }}  
 
-      #Login to AWS CodeArtifact
+      # Step 2.5: Login to AWS CodeArtifact
       - name: Login to AWS CodeArtifact
         run: |
           aws codeartifact login \
@@ -95,7 +119,7 @@ jobs:
             --domain ${{ inputs.aws-domain }} \
             --domain-owner ${{ inputs.aws-domain-owner }}
 
-      #Package and publish build to CodeArtifact
+      # Step 2.6: Package and publish build to CodeArtifact
       - name: Publish Build to CodeArtifact
         run: |
           aws codeartifact put-package-versions \
@@ -107,19 +131,12 @@ jobs:
             --package-version 1.0.0 \
             --file build.zip 
 
-      # Step 2.4: Save build artifact
+      # Step 2.7: Save build artifact
       - name: Upload Artifact
         uses: actions/upload-artifact@v3
         with:
           name: react-app-build
           path: build.zip  
-          
-      # Step 2.4: Save build artifact
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: react-app-build
-          path: \  
 
   # Step 3: Dockerize and Deploy
   docker:
