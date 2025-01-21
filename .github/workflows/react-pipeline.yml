@@ -3,6 +3,7 @@ name: React Reusable CI/CD Pipeline
 on:
   workflow_call:
     inputs:
+      inputs:
       aws-access-key-id:
         description: 'AWS Access Key ID'
         required: true
