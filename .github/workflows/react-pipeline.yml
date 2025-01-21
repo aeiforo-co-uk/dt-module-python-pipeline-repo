@@ -52,7 +52,7 @@ jobs:
 
       - name: Run Unit Tests with Jest
         working-directory: ./build
-        run: npm test -- --watchAll=false --coverage
+        run: npm test -- --watchAll=false --coverage --detectOpenHandles
         
   # Second Job: Build, Test, and SonarQube
   build-test-sonar:
