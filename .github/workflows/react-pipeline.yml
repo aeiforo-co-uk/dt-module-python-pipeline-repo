@@ -93,51 +93,56 @@ jobs:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
   artifact:
-    name: Build React App and Save Artifact
-    runs-on: ubuntu-latest
-    # needs: build-test-sonar
+  name: Build React App and Save Artifact
+  runs-on: ubuntu-latest
+  # needs: build-test-sonar
 
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+  steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
 
-      - name: Install Dependencies
-        run: npm install
+    - name: Install Dependencies
+      run: npm install
 
-      - name: Build React App
-        run: npm run build
+    - name: Build React App
+      run: npm run build
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ inputs.aws-region }}
+    - name: Zip Build Folder
+      run: |
+        zip -r build.zip build/
 
-      - name: Login to AWS CodeArtifact
-        run: |
-          aws codeartifact login \
-            --tool npm \
-            --repository ${{ inputs.npm-repository }} \
-            --domain ${{ inputs.aws-domain }} \
-            --domain-owner ${{ inputs.aws-domain-owner }}
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ inputs.aws-region }}
+
+    - name: Login to AWS CodeArtifact
+      run: |
+        aws codeartifact login \
+          --tool npm \
+          --repository ${{ inputs.npm-repository }} \
+          --domain ${{ inputs.aws-domain }} \
+          --domain-owner ${{ inputs.aws-domain-owner }}
             
-      - name: Publish Build to CodeArtifact
-        run: |
-          aws codeartifact put-package-versions \
-            --domain ${{ inputs.aws-domain }} \
-            ---domain-owner ${{ inputs.aws-domain-owner }}
-            --repository ${{ inputs.npm-repository }} \
-            --package build-artifact \
-            --package-format generic \
-            --package-version 1.0.0 \
-            --file build.zip
+    - name: Publish Build to CodeArtifact
+      run: |
+        aws codeartifact publish-package-version \
+          --domain ${{ inputs.aws-domain }} \
+          --domain-owner ${{ inputs.aws-domain-owner }} \
+          --repository ${{ inputs.npm-repository }} \
+          --package build-artifact \
+          --package-format generic \
+          --package-version 1.0.0 \
+          --asset build.zip
 
-      - name: Upload Build Artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: react-app-build  # Name of the artifact
-          path: build.zip
+    - name: Upload Build Artifact to GitHub
+      uses: actions/upload-artifact@v3
+      with:
+        name: react-app-build  # Name of the artifact
+        path: build.zip
+
 
       # - name: Save Build Artifact
       #   uses: actions/upload-artifact@v3
