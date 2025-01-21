@@ -46,22 +46,15 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install Dependencies
-        run: npm install
-      
-      - name: Add Missing Babel Plugin
-        run: npm install --save-dev @babel/plugin-proposal-private-property-in-object
-      
-      - name: Add Missing Testing Library
-        run: npm install --save-dev @testing-library/jest-dom
-      
-      - name: Run Unit Tests with Jest
-        run: npm test -- --watchAll=false --coverage --forceExit
-
+      - name: Install Testing Dependencies
+        working-directory: ./build
+        run: |
+          npm install
+          npm install --save-dev @testing-library/react
 
       - name: Run Unit Tests with Jest
         working-directory: ./build
-        run: npm test -- --watchAll=false --coverage --detectOpenHandles
+        run: npm test -- --watchAll=false --coverage
         
   # Second Job: Build, Test, and SonarQube
   build-test-sonar:
