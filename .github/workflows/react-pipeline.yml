@@ -126,7 +126,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: react-app-build
-          path: dist/*
+          path: .
 
   docker:
     name: Docker Build and Deploy
