@@ -52,14 +52,14 @@ jobs:
           npm install --save-dev @babel/plugin-transform-private-property-in-object @babel/plugin-transform-optional-chaining @babel/plugin-transform-nullish-coalescing-operator @babel/plugin-transform-class-properties
           npm install --save-dev @testing-library/react @testing-library/jest-dom
           npm audit fix || true
-      
+
       - name: Run Unit Tests with Jest
         run: npm test -- --watchAll=false --coverage --forceExit
-        
+
   build-test-sonar:
     name: SonarQube Scan
     runs-on: ubuntu-latest
-    # needs: test
+    needs: test
 
     steps:
       - name: Checkout Code
@@ -92,61 +92,60 @@ jobs:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
   artifact:
-  name: Full Project Artifact
-  runs-on: ubuntu-latest
-  needs: build-test-sonar
+    name: Full Project Artifact
+    runs-on: ubuntu-latest
+    needs: build-test-sonar
 
-  steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-    - name: Install Dependencies
-      run: npm install
+      - name: Install Dependencies
+        run: npm install
 
-    - name: Build React App
-      run: npm run build
+      - name: Build React App
+        run: npm run build
 
-    - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v2
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ secrets.AWS_REGION }}
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ inputs.aws-region }}
 
-    - name: Login to AWS CodeArtifact
-      run: |
-        aws codeartifact login \
-          --tool npm \
-          --repository ${{ secrets.NPM_REPOSITORY }} \
-          --domain ${{ secrets.AWS_DOMAIN }} \
-          --domain-owner ${{ secrets.AWS_DOMAIN_OWNER }}
+      - name: Login to AWS CodeArtifact
+        run: |
+          aws codeartifact login \
+            --tool npm \
+            --repository ${{ inputs.npm-repository }} \
+            --domain ${{ inputs.aws-domain }} \
+            --domain-owner ${{ inputs.aws-domain-owner }}
 
-    - name: Save Full Project Artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: full-project-artifact
-        path: build/
+      - name: Save Full Project Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: full-project-artifact
+          path: build/
 
-    - name: Download Latest Artifact
-      uses: actions/download-artifact@v3
-      with:
-        name: full-project-artifact
+      - name: Download Latest Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: full-project-artifact
 
-    - name: Unzip Artifact
-      run: |
-        unzip -q full-project-artifact.zip -d extracted
+      - name: Unzip Artifact
+        run: |
+          unzip -q full-project-artifact.zip -d extracted
 
-    - name: List Extracted Files
-      run: |
-        ls -l extracted/
+      - name: List Extracted Files
+        run: |
+          ls -l extracted/
 
-    - name: Push Artifact to CodeArtifact
-      run: |
-        cd extracted
-        npm publish \
-          --repository ${{ secrets.NPM_REPOSITORY }} \
-          --registry https://${{ secrets.AWS_DOMAIN }}-${{ secrets.AWS_DOMAIN_OWNER }}.d.codeartifact.${{ secrets.AWS_REGION }}.amazonaws.com/npm/${{ secrets.NPM_REPOSITORY }}/
-
+      - name: Push Artifact to CodeArtifact
+        run: |
+          cd extracted
+          npm publish \
+            --repository ${{ inputs.npm-repository }} \
+            --registry https://${{ inputs.aws-domain }}-${{ inputs.aws-domain-owner }}.d.codeartifact.${{ inputs.aws-region }}.amazonaws.com/npm/${{ inputs.npm-repository }}/
 
   docker:
     name: Docker Build and Deploy
@@ -160,7 +159,7 @@ jobs:
       - name: Download Build Artifact
         uses: actions/download-artifact@v3
         with:
-          name: react-app-build
+          name: full-project-artifact
 
       - name: Build Docker Image
         run: docker build -t react-app:latest .
