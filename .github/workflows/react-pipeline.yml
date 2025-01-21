@@ -7,8 +7,7 @@ on:
         required: true
       AWS_SECRET_ACCESS_KEY:
         required: true
-      SONAR_TOKEN:
-        required: true
+      
 
     inputs:
       aws-region:
@@ -62,8 +61,8 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           args: >
-            -Dsonar.projectKey=${{ inputs.sonar-project-key }}
-            -Dsonar.organization=${{ inputs.sonar-organization }}
+            -Dsonar.projectKey=${{ secrets.sonar-project-key }}
+            -Dsonar.organization=${{ secrets.sonar-organization }}
             -Dsonar.sources=src
             -Dsonar.tests=src
             -Dsonar.test.inclusions="**/*.test.js"
