@@ -125,9 +125,9 @@ jobs:
       - name: Publish Build to CodeArtifact
         run: |
           aws codeartifact put-package-versions \
-            --domain aeiforo \
-            --domain-owner 061039767866
-            --repository npm-store \
+            --domain ${{ inputs.aws-domain }} \
+            ---domain-owner ${{ inputs.aws-domain-owner }}
+            --repository ${{ inputs.npm-repository }} \
             --package build-artifact \
             --package-format generic \
             --package-version 1.0.0 \
