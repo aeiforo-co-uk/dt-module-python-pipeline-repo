@@ -92,31 +92,27 @@ jobs:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
   artifact:
-    name: Build React App and Save Artifact
+    name: Full Project Artifact
     runs-on: ubuntu-latest
-    # needs: build-test-sonar
-  
+    needs: build-test-sonar
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
-  
+
       - name: Install Dependencies
         run: npm install
-  
+
       - name: Build React App
         run: npm run build
-  
-      - name: Zip Build Folder
-        run: |
-          zip -r build.zip build/
-  
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ inputs.aws-region }}
-  
+
       - name: Login to AWS CodeArtifact
         run: |
           aws codeartifact login \
@@ -124,34 +120,23 @@ jobs:
             --repository ${{ inputs.npm-repository }} \
             --domain ${{ inputs.aws-domain }} \
             --domain-owner ${{ inputs.aws-domain-owner }}
-              
-      - name: Publish Build to CodeArtifact
-        run: |
-          aws codeartifact put-package-version-asset \
-            --domain ${{ inputs.aws-domain }} \
-            --domain-owner ${{ inputs.aws-domain-owner }} \
-            --repository ${{ inputs.npm-repository }} \
-            --format generic \
-            --namespace build-artifact \
-            --package build-artifact \
-            --package-version 1.0.0 \
-          
 
-  
-      - name: Upload Build Artifact to GitHub
+      # Save the entire project directory (including all subdirectories)
+      - name: Save Full Project Artifact
         uses: actions/upload-artifact@v3
         with:
-          name: react-app-build
-          path: build.zip
+          name: full-project-artifact
+          path: .
 
+      # Download and extract
       - name: Download Latest Artifact
         uses: actions/download-artifact@v3
         with:
-          name: react-app-build
+          name: full-project-artifact
 
       - name: Unzip Artifact
         run: |
-          unzip -q react-app-build.zip -d extracted
+          unzip -q full-project-artifact.zip -d extracted
 
       - name: List Extracted Files
         run: |
