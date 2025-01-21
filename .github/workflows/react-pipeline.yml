@@ -94,7 +94,7 @@ jobs:
   artifact:
     name: Full Project Artifact
     runs-on: ubuntu-latest
-    needs: build-test-sonar
+    # needs: build-test-sonar
 
     steps:
       - name: Checkout Code
