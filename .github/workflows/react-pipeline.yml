@@ -40,12 +40,6 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
-        
-      - name: List files in the current directory
-        run: ls -la
-
-      - name: Navigate to build directory
-        run: cd build
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
@@ -53,11 +47,13 @@ jobs:
           node-version: '20'
 
       - name: Install Dependencies
+        working-directory: ./build
         run: npm install
 
       - name: Run Unit Tests with Jest
+        working-directory: ./build
         run: npm test -- --watchAll=false --coverage
-
+        
   # Second Job: Build, Test, and SonarQube
   build-test-sonar:
     name: SonarQube 
