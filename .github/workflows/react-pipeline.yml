@@ -51,16 +51,15 @@ jobs:
           npm install
           npm install --save-dev @babel/plugin-transform-private-property-in-object @babel/plugin-transform-optional-chaining @babel/plugin-transform-nullish-coalescing-operator @babel/plugin-transform-class-properties
           npm install --save-dev @testing-library/react @testing-library/jest-dom
-          npm audit fix || true # Logs issues without breaking the workflow
+          npm audit fix || true
       
       - name: Run Unit Tests with Jest
         run: npm test -- --watchAll=false --coverage --forceExit
         
-  # Second Job: Build, Test, and SonarQube
   build-test-sonar:
-    name: SonarQube 
+    name: SonarQube Scan
     runs-on: ubuntu-latest
-    # needs: test
+    needs: test
 
     steps:
       - name: Checkout Code
@@ -92,10 +91,10 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
-    artifact:
+  artifact:
     name: Build React App and Save Artifact
     runs-on: ubuntu-latest
-    # needs: build-test-sonar
+    needs: build-test-sonar
   
     steps:
       - name: Checkout Code
@@ -140,36 +139,26 @@ jobs:
       - name: Upload Build Artifact to GitHub
         uses: actions/upload-artifact@v3
         with:
-          name: react-app-build  # Name of the artifact
+          name: react-app-build
           path: build.zip
 
-
-      # - name: Save Build Artifact
-      #   uses: actions/upload-artifact@v3
-      #   with:
-      #     name: react-app-build
-      #     path: .
-
-     # Download the latest artifact
       - name: Download Latest Artifact
         uses: actions/download-artifact@v3
         with:
-          name: full-project-artifact
+          name: react-app-build
 
-      # Unzip the downloaded artifact
       - name: Unzip Artifact
         run: |
-          unzip -q full-project-artifact.zip -d extracted
+          unzip -q react-app-build.zip -d extracted
 
-      # List the extracted files
       - name: List Extracted Files
         run: |
-          ls -l extracted/      
+          ls -l extracted/
 
   docker:
     name: Docker Build and Deploy
     runs-on: ubuntu-latest
-    # needs: artifact
+    needs: artifact
 
     steps:
       - name: Checkout Code
