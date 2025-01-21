@@ -135,8 +135,7 @@ jobs:
             --namespace build-artifact \
             --package build-artifact \
             --package-version 1.0.0 \
-            --asset build.zip \
-            --asset-name build.zip
+          
 
   
       - name: Upload Build Artifact to GitHub
