@@ -78,11 +78,11 @@ jobs:
         uses: sonarsource/sonarcloud-github-action@v1.10
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         with:
           args: >
             -Dsonar.projectKey=${{ inputs.sonar-project-key }}
-            -Dsonar.sources=src
-            -Dsonar.tests=src
+            -Dsonar.sources=./
             -Dsonar.test.inclusions="**/*.test.js"
             -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
 
