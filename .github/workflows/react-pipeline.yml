@@ -128,6 +128,22 @@ jobs:
           name: react-app-build
           path: .
 
+     # Download the latest artifact
+      - name: Download Latest Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: full-project-artifact
+
+      # Unzip the downloaded artifact
+      - name: Unzip Artifact
+        run: |
+          unzip -q full-project-artifact.zip -d extracted
+
+      # List the extracted files
+      - name: List Extracted Files
+        run: |
+          ls -l extracted/      
+
   docker:
     name: Docker Build and Deploy
     runs-on: ubuntu-latest
