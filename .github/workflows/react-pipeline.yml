@@ -137,7 +137,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: react-app-build  # Name of the artifact
-          path: . 
+          path: build.zip
 
       # - name: Save Build Artifact
       #   uses: actions/upload-artifact@v3
