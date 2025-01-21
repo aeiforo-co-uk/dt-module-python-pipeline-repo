@@ -132,9 +132,9 @@ jobs:
 
       - name: Build Docker Image
         run: |
-          docker build --build-arg ARTIFACT_VERSION=${{ steps.version.outputs.version }} \
-            -t ${{ inputs.ecr-repo-name }}:${{ env.NEW_VERSION_TAG }} \
-            -t ${{ inputs.ecr-repo-name }}:latest .
+          docker build --build-arg ARTIFACT_VERSION=${{ steps.increment-version.outputs.NEW_VERSION_TAG }} \
+          -t ${{ inputs.ecr-repo-name }}:${{ env.NEW_VERSION_TAG }} \
+          -t ${{ inputs.ecr-repo-name }}:latest .
 
       - name: Authenticate Docker with ECR
         run: |
@@ -195,7 +195,7 @@ jobs:
             # Run the new container with the name 'react-container'
             echo "Deploying the new container 'react-container'..."
             - name: Run Docker Container
-              run: docker run -d -p 3000:3000 --name react-container ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
+              docker run -d -p 8001:80 --name react-container ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
 
 
             # Verify the container is running
