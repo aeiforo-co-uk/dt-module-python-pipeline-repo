@@ -39,16 +39,6 @@ on:
         description: 'NPM Repository Name'
         required: true
         type: string
-    secrets:
-      AWS_ACCESS_KEY_ID:
-        description: 'AWS Access Key ID for AWS Credentials'
-        required: true
-      AWS_SECRET_ACCESS_KEY:
-        description: 'AWS Secret Access Key for AWS Credentials'
-        required: true
-      SONAR_TOKEN:
-        description: 'SonarQube Token for Scans'
-        required: true
 
 jobs:
   build-test-sonar:
@@ -73,7 +63,7 @@ jobs:
       - name: SonarQube Scan
         uses: sonarsource/sonarcloud-github-action@v1.10
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_TOKEN: ${{ inputs.sonarqube-token }}
         with:
           args: >
             -Dsonar.projectKey=${{ inputs.sonar-project-key }}
@@ -104,8 +94,8 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-access-key-id: ${{ inputs.aws-access-key-id }}
+          aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
           aws-region: ${{ inputs.aws-region }}
 
       - name: Login to AWS CodeArtifact
