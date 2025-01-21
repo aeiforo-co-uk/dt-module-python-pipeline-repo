@@ -92,55 +92,61 @@ jobs:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
   artifact:
-    name: Full Project Artifact
-    runs-on: ubuntu-latest
-    # needs: build-test-sonar
+  name: Full Project Artifact
+  runs-on: ubuntu-latest
+  needs: build-test-sonar
 
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+  steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
 
-      - name: Install Dependencies
-        run: npm install
+    - name: Install Dependencies
+      run: npm install
 
-      - name: Build React App
-        run: npm run build
+    - name: Build React App
+      run: npm run build
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ inputs.aws-region }}
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Login to AWS CodeArtifact
-        run: |
-          aws codeartifact login \
-            --tool npm \
-            --repository ${{ inputs.npm-repository }} \
-            --domain ${{ inputs.aws-domain }} \
-            --domain-owner ${{ inputs.aws-domain-owner }}
+    - name: Login to AWS CodeArtifact
+      run: |
+        aws codeartifact login \
+          --tool npm \
+          --repository ${{ secrets.NPM_REPOSITORY }} \
+          --domain ${{ secrets.AWS_DOMAIN }} \
+          --domain-owner ${{ secrets.AWS_DOMAIN_OWNER }}
 
-      # Save the entire project directory (including all subdirectories)
-      - name: Save Full Project Artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: full-project-artifact
-          path: .
+    - name: Save Full Project Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: full-project-artifact
+        path: build/
 
-      # Download and extract
-      - name: Download Latest Artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: full-project-artifact
+    - name: Download Latest Artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: full-project-artifact
 
-      - name: Unzip Artifact
-        run: |
-          unzip -q full-project-artifact.zip -d extracted
+    - name: Unzip Artifact
+      run: |
+        unzip -q full-project-artifact.zip -d extracted
 
-      - name: List Extracted Files
-        run: |
-          ls -l extracted/
+    - name: List Extracted Files
+      run: |
+        ls -l extracted/
+
+    - name: Push Artifact to CodeArtifact
+      run: |
+        cd extracted
+        npm publish \
+          --repository ${{ secrets.NPM_REPOSITORY }} \
+          --registry https://${{ secrets.AWS_DOMAIN }}-${{ secrets.AWS_DOMAIN_OWNER }}.d.codeartifact.${{ secrets.AWS_REGION }}.amazonaws.com/npm/${{ secrets.NPM_REPOSITORY }}/
+
 
   docker:
     name: Docker Build and Deploy
