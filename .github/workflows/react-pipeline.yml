@@ -2,17 +2,17 @@ name: React Reusable CI/CD Pipeline
 
 on:
   workflow_call:
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      SONAR_TOKEN:
+        required: true
+
     inputs:
-      aws-access-key-id:
-        description: 'AWS Access Key ID'
-        required: true
-        type: string
-      aws-secret-access-key:
-        description: 'AWS Secret Access Key'
-        required: true
-        type: string
-      sonarqube-token:
-        description: 'SonarQube Token'
+      aws-region:
+        description: 'AWS Region'
         required: true
         type: string
       sonar-project-key:
@@ -21,10 +21,6 @@ on:
         type: string
       sonar-organization:
         description: 'SonarQube Organization'
-        required: true
-        type: string
-      aws-region:
-        description: 'AWS Region'
         required: true
         type: string
       aws-domain:
@@ -63,7 +59,7 @@ jobs:
       - name: SonarQube Scan
         uses: sonarsource/sonarcloud-github-action@v1.10
         env:
-          SONAR_TOKEN: ${{ inputs.sonarqube-token }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           args: >
             -Dsonar.projectKey=${{ inputs.sonar-project-key }}
@@ -94,8 +90,8 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          aws-access-key-id: ${{ inputs.aws-access-key-id }}
-          aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ inputs.aws-region }}
 
       - name: Login to AWS CodeArtifact
