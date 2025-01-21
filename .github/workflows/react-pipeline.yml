@@ -7,7 +7,8 @@ on:
         required: true
       AWS_SECRET_ACCESS_KEY:
         required: true
-      
+      SONAR_TOKEN:
+        required: true
 
     inputs:
       aws-region:
@@ -16,10 +17,6 @@ on:
         type: string
       sonar-project-key:
         description: 'SonarQube Project Key'
-        required: true
-        type: string
-      sonar-organization:
-        description: 'SonarQube Organization'
         required: true
         type: string
       aws-domain:
@@ -61,8 +58,7 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           args: >
-            -Dsonar.projectKey=${{ secrets.sonar-project-key }}
-            -Dsonar.organization=${{ secrets.sonar-organization }}
+            -Dsonar.projectKey=${{ inputs.sonar-project-key }}
             -Dsonar.sources=src
             -Dsonar.tests=src
             -Dsonar.test.inclusions="**/*.test.js"
