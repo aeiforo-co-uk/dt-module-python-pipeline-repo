@@ -47,13 +47,11 @@ jobs:
           node-version: '20'
 
       - name: Install Dependencies
-        run: npm install
-      
-      - name: Add Missing Babel Plugin
-        run: npm install --save-dev @babel/plugin-proposal-private-property-in-object
-      
-      - name: Add Missing Testing Library
-        run: npm install --save-dev @testing-library/jest-dom
+        run: |
+          npm install
+          npm install --save-dev @babel/plugin-transform-private-property-in-object @babel/plugin-transform-optional-chaining @babel/plugin-transform-nullish-coalescing-operator @babel/plugin-transform-class-properties
+          npm install --save-dev @testing-library/react @testing-library/jest-dom
+          npm audit fix || true # Logs issues without breaking the workflow
       
       - name: Run Unit Tests with Jest
         run: npm test -- --watchAll=false --coverage --forceExit
