@@ -33,10 +33,10 @@ on:
         type: string
 
 jobs:
-  build-test-sonar:
-    name: Build, Test, and SonarQube
+  # First Job: Run Unit Tests
+  test:
+    name: Run Unit Tests
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -49,8 +49,32 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
-      - name: Run Unit Tests
-        run: npm test -- --watchAll=false
+      - name: Run Unit Tests with Jest
+        run: npm test -- --watchAll=false --coverage
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: coverage/
+
+  # Second Job: Build, Test, and SonarQube
+  build-test-sonar:
+    name: SonarQube 
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        run: npm install
 
       - name: SonarQube Scan
         uses: sonarsource/sonarcloud-github-action@v1.10
