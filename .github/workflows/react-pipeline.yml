@@ -3,7 +3,6 @@ name: React Reusable CI/CD Pipeline
 on:
   workflow_call:
     inputs:
-      inputs:
       aws-access-key-id:
         description: 'AWS Access Key ID'
         required: true
@@ -40,37 +39,41 @@ on:
         description: 'NPM Repository Name'
         required: true
         type: string
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        description: 'AWS Access Key ID for AWS Credentials'
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        description: 'AWS Secret Access Key for AWS Credentials'
+        required: true
+      SONAR_TOKEN:
+        description: 'SonarQube Token for Scans'
+        required: true
 
 jobs:
-  # Step 1: Checkout, Unit Testing, and SonarQube Analysis
   build-test-sonar:
     name: Build, Test, and SonarQube
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1.1: Checkout code
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # Step 1.2: Set up Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '20'
 
-      # Step 1.3: Install dependencies
       - name: Install Dependencies
         run: npm install
 
-      # Step 1.4: Run unit tests
       - name: Run Unit Tests
         run: npm test -- --watchAll=false
 
-      # Step 1.5: Run SonarQube Analysis
       - name: SonarQube Scan
         uses: sonarsource/sonarcloud-github-action@v1.10
         env:
-          SONAR_TOKEN: ${{ inputs.sonarqube-token }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           args: >
             -Dsonar.projectKey=${{ inputs.sonar-project-key }}
@@ -79,39 +82,32 @@ jobs:
             -Dsonar.tests=src
             -Dsonar.test.inclusions="**/*.test.js"
             -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
-            
-      # Step 1.6: Check SonarQube Quality Gate
+
       - name: SonarQube Quality Gate
         uses: sonarsource/sonarcloud-quality-gate-action@v1
 
-  # Step 2: Build React App and Save Artifact
   artifact:
     name: Build React App and Save Artifact
     runs-on: ubuntu-latest
     needs: build-test-sonar
 
     steps:
-      # Step 2.1: Checkout code
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # Step 2.2: Install dependencies
       - name: Install Dependencies
         run: npm install
 
-      # Step 2.3: Build React app
       - name: Build React App
         run: npm run build
 
-      # Step 2.4: Configure AWS Credentials
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          aws-access-key-id: ${{ inputs.aws-access-key-id }}
-          aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
-          aws-region: ${{ inputs.aws-region }}  
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ inputs.aws-region }}
 
-      # Step 2.5: Login to AWS CodeArtifact
       - name: Login to AWS CodeArtifact
         run: |
           aws codeartifact login \
@@ -120,52 +116,28 @@ jobs:
             --domain ${{ inputs.aws-domain }} \
             --domain-owner ${{ inputs.aws-domain-owner }}
 
-      # Step 2.6: Package and publish build to CodeArtifact
-      - name: Publish Build to CodeArtifact
-        run: |
-          aws codeartifact put-package-versions \
-            --domain ${{ inputs.aws-domain }} \
-            --domain-owner ${{ inputs.aws-domain-owner }} \
-            --repository ${{ inputs.npm-repository }} \
-            --package build-artifact \
-            --package-format generic \
-            --package-version 1.0.0 \
-            --file build.zip 
-
-      # Step 2.7: Save build artifact
-      - name: Upload Artifact
+      - name: Save Build Artifact
         uses: actions/upload-artifact@v3
         with:
           name: react-app-build
-          path: build.zip  
+          path: build/
 
-  # Step 3: Dockerize and Deploy
   docker:
     name: Docker Build and Deploy
     runs-on: ubuntu-latest
     needs: artifact
 
     steps:
-      # Step 3.1: Checkout code
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # Step 3.2: Download build artifact
-      - name: Download Artifact
+      - name: Download Build Artifact
         uses: actions/download-artifact@v3
         with:
           name: react-app-build
 
-      # Step 3.3: Unzip Artifact
-      - name: Unzip Artifact
-        run: unzip build.zip
-
-      # Step 3.4: Build Docker image
       - name: Build Docker Image
-        run: |
-          docker build -t react-app:latest .
+        run: docker build -t react-app:latest .
 
-      # Step 3.5: Run Docker container
       - name: Run Docker Container
-        run: |
-          docker run -d -p 3000:3000 --name react-app react-app:latest
+        run: docker run -d -p 3000:3000 --name react-app react-app:latest
