@@ -127,14 +127,17 @@ jobs:
               
       - name: Publish Build to CodeArtifact
         run: |
-          aws codeartifact publish-package-version \
+          aws codeartifact put-package-version-asset \
             --domain ${{ inputs.aws-domain }} \
             --domain-owner ${{ inputs.aws-domain-owner }} \
             --repository ${{ inputs.npm-repository }} \
+            --format generic \
+            --namespace build-artifact \
             --package build-artifact \
-            --package-format generic \
             --package-version 1.0.0 \
-            --asset build.zip
+            --asset build.zip \
+            --asset-name build.zip
+
   
       - name: Upload Build Artifact to GitHub
         uses: actions/upload-artifact@v3
