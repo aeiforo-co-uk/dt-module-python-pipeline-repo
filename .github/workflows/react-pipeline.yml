@@ -47,8 +47,17 @@ jobs:
           node-version: '20'
 
       - name: Install Dependencies
-        working-directory: ./build
         run: npm install
+      
+      - name: Add Missing Babel Plugin
+        run: npm install --save-dev @babel/plugin-proposal-private-property-in-object
+      
+      - name: Add Missing Testing Library
+        run: npm install --save-dev @testing-library/jest-dom
+      
+      - name: Run Unit Tests with Jest
+        run: npm test -- --watchAll=false --coverage --forceExit
+
 
       - name: Run Unit Tests with Jest
         working-directory: ./build
