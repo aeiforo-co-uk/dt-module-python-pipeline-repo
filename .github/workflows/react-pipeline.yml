@@ -1,9 +1,6 @@
 name: React Reusable CI/CD Pipeline
 
 on:
-  push:
-    branches:
-      - feature/react-app # Adjust to your branch name
   workflow_call:
     secrets:
       AWS_ACCESS_KEY_ID:
@@ -57,6 +54,8 @@ jobs:
       - name: Install Dependencies
         run: |
           npm install
+          npm install --save-dev @babel/plugin-transform-private-property-in-object @babel/plugin-transform-optional-chaining @babel/plugin-transform-nullish-coalescing-operator @babel/plugin-transform-class-properties
+          npm install --save-dev @testing-library/react @testing-library/jest-dom
           npm audit fix || true
 
       - name: Run Unit Tests with Jest
@@ -75,35 +74,34 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Check for Uncommitted Changes
-        id: check_changes
+      - name: Check for Changes
+        id: changes
         run: |
-          if [ -n "$(git status --porcelain)" ]; then
-            echo "uncommitted_changes=true" >> $GITHUB_ENV
+          git fetch origin feature/react-app
+          if git diff --exit-code HEAD origin/feature/react-app -- . > /dev/null; then
+            echo "should_deploy=true" >> $GITHUB_ENV
           else
-            echo "uncommitted_changes=false" >> $GITHUB_ENV
+            echo "should_deploy=false" >> $GITHUB_ENV
           fi
 
       - name: Configure Git User
-        if: env.uncommitted_changes == 'true'
+        if: env.should_deploy == 'true'
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Increment Version
-        if: env.uncommitted_changes == 'true'
+        if: env.should_deploy == 'true'
         run: |
           npm version patch
-          git add package.json package-lock.json
-          git commit -m "Bump version [skip ci]"
           git push origin HEAD
 
       - name: Build React App
-        if: env.uncommitted_changes == 'true'
+        if: env.should_deploy == 'true'
         run: npm run build
 
       - name: Configure AWS Credentials
-        if: env.uncommitted_changes == 'true'
+        if: env.should_deploy == 'true'
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -111,7 +109,7 @@ jobs:
           aws-region: ${{ inputs.aws-region }}
 
       - name: Login to AWS CodeArtifact
-        if: env.uncommitted_changes == 'true'
+        if: env.should_deploy == 'true'
         run: |
           aws codeartifact login \
             --tool npm \
@@ -120,11 +118,11 @@ jobs:
             --domain-owner ${{ inputs.aws-domain-owner }}
 
       - name: Publish Package
-        if: env.uncommitted_changes == 'true'
+        if: env.should_deploy == 'true'
         run: npm publish
 
       - name: Upload Package Artifact to GitHub
-        if: env.uncommitted_changes == 'true'
+        if: env.should_deploy == 'true'
         uses: actions/upload-artifact@v3
         with:
           name: react-package
