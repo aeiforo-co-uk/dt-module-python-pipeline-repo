@@ -85,7 +85,15 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ inputs.aws-region }}
-  
+
+      - name: Login to AWS CodeArtifact
+        run: |
+          aws codeartifact login \
+            --tool npm \
+            --repository ${{ inputs.npm-repository }} \
+            --domain ${{ inputs.aws-domain }} \
+            --domain-owner ${{ inputs.aws-domain-owner }}
+              
       - name: Publish Artifact to AWS CodeArtifact
         run: |
           aws codeartifact put-package-assets \
