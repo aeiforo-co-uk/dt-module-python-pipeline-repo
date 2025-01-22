@@ -65,7 +65,6 @@ jobs:
     name: Build React App and Save Artifact
     runs-on: ubuntu-latest
   
-  
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -87,18 +86,20 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ inputs.aws-region }}
   
-      - name: Login to AWS CodeArtifact
+      - name: Publish Artifact to AWS CodeArtifact
         run: |
-          aws codeartifact login \
-            --tool npm \
-            --repository ${{ inputs.npm-repository }} \
+          aws codeartifact put-package-assets \
             --domain ${{ inputs.aws-domain }} \
-            --domain-owner ${{ inputs.aws-domain-owner }}
-              
-  
+            --domain-owner ${{ inputs.aws-domain-owner }} \
+            --repository ${{ inputs.npm-repository }} \
+            --format generic \
+            --package react-app-build \
+            --version 1.0.0 \
+            --asset file://build.zip \
+            --asset-name build.zip        
+
       - name: Upload Build Artifact to GitHub
         uses: actions/upload-artifact@v3
         with:
           name: react-app-build
           path: build/
-
