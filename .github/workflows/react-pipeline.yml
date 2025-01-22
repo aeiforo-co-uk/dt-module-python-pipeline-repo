@@ -99,6 +99,14 @@ jobs:
             --domain ${{ inputs.aws-domain }} \
             --domain-owner ${{ inputs.aws-domain-owner }}
 
+      - name: Debug Inputs
+        run: |
+          echo "AWS Region: ${{ inputs.aws-region }}"
+          echo "Domain: ${{ inputs.aws-domain }}"
+          echo "Domain Owner: ${{ inputs.aws-domain-owner }}"
+          echo "Repository: ${{ inputs.npm-repository }}"
+          ls -lh build.zip
+    
       - name: Publish Artifact to AWS CodeArtifact
         env:
           AWS_REGION: ${{ inputs.aws-region }}
