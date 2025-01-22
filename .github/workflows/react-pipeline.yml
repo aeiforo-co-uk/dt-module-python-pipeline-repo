@@ -101,9 +101,9 @@ jobs:
         run: |
           aws codeartifact login \
             --tool npm \
-            --repository ${{ secrets.CODEARTIFACT_REPOSITORY }} \
-            --domain ${{ secrets.CODEARTIFACT_DOMAIN }} \
-            --domain-owner ${{ secrets.CODEARTIFACT_DOMAIN_OWNER }}
+            --repository ${{ inputs.npm-repository }} \
+            --domain ${{ inputs.aws-domain }} \
+            --domain-owner ${{ inputs.aws-domain-owner }}
 
       - name: Publish Build to AWS CodeArtifact
         working-directory: ./build
