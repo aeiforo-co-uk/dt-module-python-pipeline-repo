@@ -105,10 +105,18 @@ jobs:
             --domain ${{ inputs.aws-domain }} \
             --domain-owner ${{ inputs.aws-domain-owner }}
 
+      - name: Debug .npmrc
+        run: cat ~/.npmrc
+
       - name: Publish Build to AWS CodeArtifact
         working-directory: ./build
-        run: npm publish --registry https://${{ secrets.CODEARTIFACT_DOMAIN }}-${{ secrets.CODEARTIFACT_DOMAIN_OWNER }}.d.codeartifact.${{ secrets.AWS_REGION }}.amazonaws.com/npm/${{ secrets.CODEARTIFACT_REPOSITORY }}/
+        env:
+          NPM_REGISTRY_URL: "https://${{ inputs.aws-domain }}-${{ inputs.aws-domain-owner }}.d.codeartifact.${{ inputs.aws-region }}.amazonaws.com/npm/${{ inputs.npm-repository }}/"
+        run: |
+          npm set registry $NPM_REGISTRY_URL
+          npm publish
 
+          
       - name: Upload Build Artifact to GitHub
         uses: actions/upload-artifact@v3
         with:
