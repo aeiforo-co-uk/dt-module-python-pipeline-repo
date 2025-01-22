@@ -80,38 +80,34 @@ jobs:
       - name: Build React App
         run: npm run build
 
-      - name: Zip Build Folder
+      - name: Create package.json for Build
         run: |
-          zip -r build.zip build/
+          echo '{
+            "name": "react-app-build",
+            "version": "1.0.0",
+            "description": "React App Build Artifact",
+            "main": "index.js",
+            "license": "MIT"
+          }' > build/package.json
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ inputs.aws-region }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Login to AWS CodeArtifact
         run: |
           aws codeartifact login \
             --tool npm \
-            --repository ${{ inputs.npm-repository }} \
-            --domain ${{ inputs.aws-domain }} \
-            --domain-owner ${{ inputs.aws-domain-owner }}
-    
-      - name: Publish Artifact to AWS CodeArtifact
-        env:
-          AWS_REGION: ${{ inputs.aws-region }}
-        run: |
-          aws codeartifact put-package-assets \
-            --domain ${{ inputs.aws-domain }} \
-            --domain-owner ${{ inputs.aws-domain-owner }} \
-            --repository ${{ inputs.npm-repository }} \
-            --format generic \
-            --package react-app-build \
-            --version 1.0.0 \
-            --asset file://build.zip \
-            --asset-name build.zip
+            --repository ${{ secrets.CODEARTIFACT_REPOSITORY }} \
+            --domain ${{ secrets.CODEARTIFACT_DOMAIN }} \
+            --domain-owner ${{ secrets.CODEARTIFACT_DOMAIN_OWNER }}
+
+      - name: Publish Build to AWS CodeArtifact
+        working-directory: ./build
+        run: npm publish --registry https://${{ secrets.CODEARTIFACT_DOMAIN }}-${{ secrets.CODEARTIFACT_DOMAIN_OWNER }}.d.codeartifact.${{ secrets.AWS_REGION }}.amazonaws.com/npm/${{ secrets.CODEARTIFACT_REPOSITORY }}/
 
       - name: Upload Build Artifact to GitHub
         uses: actions/upload-artifact@v3
