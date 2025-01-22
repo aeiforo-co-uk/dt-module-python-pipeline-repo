@@ -84,7 +84,7 @@ jobs:
         run: |
           echo '{
             "name": "react-app-build",
-            "version": "1.0.0",
+            "version": "1.0.1",
             "description": "React App Build Artifact",
             "main": "index.js",
             "license": "MIT"
@@ -121,4 +121,4 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: react-app-build
-          path: build/
+          path: .
