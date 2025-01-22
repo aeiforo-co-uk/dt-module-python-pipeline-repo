@@ -164,5 +164,5 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: react-app-build
-          path: build/
+          path: .
 
