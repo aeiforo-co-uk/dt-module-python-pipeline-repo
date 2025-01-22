@@ -62,7 +62,7 @@ jobs:
         run: npm test -- --watchAll=false --coverage --forceExit
 
   build-artifact:
-    name: Build and Publish React App
+    name: Build, Publish, and Retrieve React App
     runs-on: ubuntu-latest
 
     steps:
@@ -80,15 +80,28 @@ jobs:
       - name: Build React App
         run: npm run build
 
-      - name: Create package.json for Build
+      - name: Increment Version and Create package.json
+        id: versioning
         run: |
-          echo '{
-            "name": "react-app-build",
-            "version": "1.0.1",
-            "description": "React App Build Artifact",
-            "main": "index.js",
-            "license": "MIT"
-          }' > build/package.json
+          # Extract the current version if exists, else default to 1.0.0
+          VERSION=$(jq -r '.version' build/package.json 2>/dev/null || echo "1.0.0")
+          
+          # Increment the patch version (e.g., 1.0.0 -> 1.0.1)
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          PATCH=$((PATCH + 1))
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          
+          # Create or update package.json with the new version
+          echo "{
+            \"name\": \"react-app-build\",
+            \"version\": \"$NEW_VERSION\",
+            \"description\": \"React App Build Artifact\",
+            \"main\": \"index.js\",
+            \"license\": \"MIT\"
+          }" > build/package.json
+          
+          echo "New version: $NEW_VERSION"
+          echo "VERSION=$NEW_VERSION" >> $GITHUB_ENV
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -116,9 +129,32 @@ jobs:
           npm set registry $NPM_REGISTRY_URL
           npm publish
 
+      - name: Download and Extract Latest Version
+        env:
+          NPM_REGISTRY_URL: "https://${{ inputs.aws-domain }}-${{ inputs.aws-domain-owner }}.d.codeartifact.${{ inputs.aws-region }}.amazonaws.com/npm/${{ inputs.npm-repository }}/"
+        run: |
+          # Configure npm registry
+          npm set registry $NPM_REGISTRY_URL
           
+          # Authenticate with CodeArtifact
+          aws codeartifact login \
+            --tool npm \
+            --repository ${{ inputs.npm-repository }} \
+            --domain ${{ inputs.aws-domain }} \
+            --domain-owner ${{ inputs.aws-domain-owner }}
+          
+          # Download the latest version of the package
+          npm pack react-app-build@latest
+          
+          # Extract the package
+          mkdir -p extracted-package
+          tar -xzf react-app-build-*.tgz -C extracted-package --strip-components=1
+          
+          # List extracted files for debugging
+          ls -R extracted-package/
+
       - name: Upload Build Artifact to GitHub
         uses: actions/upload-artifact@v3
         with:
           name: react-app-build
-          path: .
+          path: build/
