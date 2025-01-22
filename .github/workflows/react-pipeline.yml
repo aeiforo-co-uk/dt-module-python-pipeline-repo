@@ -64,25 +64,29 @@ jobs:
   artifact:
     name: Build React App and Save Artifact
     runs-on: ubuntu-latest
-   
-
+  
+  
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
-
+  
       - name: Install Dependencies
         run: npm install
-
+  
       - name: Build React App
         run: npm run build
-
+  
+      - name: Zip Build Folder
+        run: |
+          zip -r build.zip build/
+  
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          aws-access-key-id: ${{ inputs.aws-access-key-id }}
-          aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ inputs.aws-region }}
-
+  
       - name: Login to AWS CodeArtifact
         run: |
           aws codeartifact login \
@@ -90,9 +94,11 @@ jobs:
             --repository ${{ inputs.npm-repository }} \
             --domain ${{ inputs.aws-domain }} \
             --domain-owner ${{ inputs.aws-domain-owner }}
-
-      - name: Save Build Artifact
+              
+  
+      - name: Upload Build Artifact to GitHub
         uses: actions/upload-artifact@v3
         with:
           name: react-app-build
           path: build/
+
