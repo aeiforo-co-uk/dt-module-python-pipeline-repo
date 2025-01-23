@@ -49,26 +49,24 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Cache Node Modules
-        uses: actions/cache@v3
-        with:
-          path: node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      - name: Install Dependencies
+      - name: Clean npm Cache and Reinstall Dependencies
         run: |
+          npm cache clean --force
+          rm -rf node_modules package-lock.json
           npm install
-          npm install --save-dev @babel/code-frame
 
-      - name: Debug Node Modules
+      - name: Install Jest and Babel
         run: |
-          ls -la node_modules/@babel
+          npm install --save-dev jest jest-cli @babel/core @babel/preset-env
+
+      - name: Verify Installed Modules
+        run: |
+          ls -la node_modules/@jest
           npm list --depth=0
 
       - name: Run Unit Tests with Jest
         run: npx jest --watchAll=false --coverage --forceExit --debug
+
 
   build-test-sonar:
     name: SonarQube Scan
