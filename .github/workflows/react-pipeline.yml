@@ -237,12 +237,13 @@ jobs:
           else
             echo "'extracted-package' directory exists."
           fi
-          echo "Copying everything to 'extracted-package' directory:"
-          cp -r * extracted-package/
+          echo "Copying everything to 'extracted-package' directory, excluding itself:"
+          find . -mindepth 1 -maxdepth 1 ! -name 'extracted-package' -exec cp -r {} extracted-package/ \;
           echo "Listing files in the project directory:"
           ls -la
           echo "Verifying extracted-package contents:"
           ls -la extracted-package
+      
 
 
       - name: Build Docker Image
