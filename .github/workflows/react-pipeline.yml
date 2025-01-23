@@ -237,21 +237,13 @@ jobs:
           else
             echo "'extracted-package' directory exists."
           fi
-          echo "Listing files:"
+          echo "Copying everything to 'extracted-package' directory:"
+          cp -r * extracted-package/
+          echo "Listing files in the project directory:"
           ls -la
-          echo "Verifying extracted-package:"
+          echo "Verifying extracted-package contents:"
           ls -la extracted-package
 
-      - name: Verify Build Context
-        run: |
-          echo "Current directory:"
-          pwd
-          echo "Listing files:"
-          ls -la
-          echo "Checking extracted-package:"
-          ls -la extracted-package
-          echo "Checking nginx.conf:"
-          ls -la nginx.conf
 
       - name: Build Docker Image
         run: |
