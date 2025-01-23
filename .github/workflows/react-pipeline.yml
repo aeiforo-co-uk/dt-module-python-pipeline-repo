@@ -60,10 +60,12 @@ jobs:
       - name: Install Dependencies
         run: |
           npm install
-          npm install --save-dev jest-cli
+          npm install --save-dev @babel/code-frame
 
-      - name: List Node Modules
-        run: ls -la node_modules
+      - name: Debug Node Modules
+        run: |
+          ls -la node_modules/@babel
+          npm list --depth=0
 
       - name: Run Unit Tests with Jest
         run: npx jest --watchAll=false --coverage --forceExit --debug
