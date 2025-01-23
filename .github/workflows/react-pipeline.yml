@@ -117,7 +117,7 @@ jobs:
         run: |
           echo '{
             "name": "react-app-build",
-            "version": "1.0.4",
+            "version": "1.0.5",
             "description": "React App Build Artifact",
             "main": "index.js",
             "license": "MIT"
