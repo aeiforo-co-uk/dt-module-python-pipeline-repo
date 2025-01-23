@@ -71,6 +71,14 @@ jobs:
       - name: Run Unit Tests with Jest
         run: npx jest --watchAll=false --coverage --forceExit --debug
 
+      - name: Set up Babel Configuration
+        run: |
+          echo "module.exports = { presets: ['@babel/preset-env', '@babel/preset-react'] };" > babel.config.js
+          
+      - name: Run Tests Again After Babel Config
+        run: npx jest --watchAll=false --coverage --forceExit --debug
+
+
 
   build-test-sonar:
     name: SonarQube Scan
