@@ -181,7 +181,7 @@ jobs:
           ls -R extracted-package/
           ls -la extracted-package
 
-    docker:
+  docker:
     name: Docker Build and Deploy
     runs-on: ubuntu-latest
     needs: build-artifact
