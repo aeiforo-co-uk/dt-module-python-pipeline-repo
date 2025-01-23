@@ -49,34 +49,15 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Clean npm Cache and Reinstall Dependencies
+      - name: Install Dependencies
         run: |
-          npm cache clean --force
-          rm -rf node_modules package-lock.json
           npm install
-
-      - name: Install Jest and Babel
-        run: |
-          npm install --save-dev jest jest-cli @babel/core @babel/preset-env
-          npm install --save-dev @babel/preset-react
-      
-
-      - name: Verify Installed Modules
-        run: |
-          ls -la node_modules/@jest
-          npm list --depth=0
+          npm install --save-dev @babel/plugin-transform-private-property-in-object @babel/plugin-transform-optional-chaining @babel/plugin-transform-nullish-coalescing-operator @babel/plugin-transform-class-properties
+          npm install --save-dev @testing-library/react @testing-library/jest-dom
+          npm audit fix || true
 
       - name: Run Unit Tests with Jest
-        run: npx jest --watchAll=false --coverage --forceExit --debug
-
-      - name: Set up Babel Configuration
-        run: |
-          echo "module.exports = { presets: ['@babel/preset-env', '@babel/preset-react'] };" > babel.config.js
-          
-      - name: Run Tests Again After Babel Config
-        run: npx jest --watchAll=false --coverage --forceExit --debug
-
-
+        run: npm test -- --watchAll=false --coverage --forceExit
 
   build-test-sonar:
     name: SonarQube Scan
