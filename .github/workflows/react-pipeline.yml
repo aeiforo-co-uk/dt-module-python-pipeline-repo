@@ -49,15 +49,24 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Cache Node Modules
+        uses: actions/cache@v3
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
       - name: Install Dependencies
         run: |
           npm install
-          npm install --save-dev @babel/plugin-transform-private-property-in-object @babel/plugin-transform-optional-chaining @babel/plugin-transform-nullish-coalescing-operator @babel/plugin-transform-class-properties
-          npm install --save-dev @testing-library/react @testing-library/jest-dom
-          npm audit fix || true
+          npm install --save-dev jest-cli
+
+      - name: List Node Modules
+        run: ls -la node_modules
 
       - name: Run Unit Tests with Jest
-        run: npm test -- --watchAll=false --coverage --forceExit
+        run: npx jest --watchAll=false --coverage --forceExit --debug
 
   build-test-sonar:
     name: SonarQube Scan
