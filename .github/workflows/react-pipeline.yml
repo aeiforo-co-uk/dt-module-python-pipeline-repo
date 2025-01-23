@@ -230,18 +230,28 @@ jobs:
           cd /home/runner/work/dt-frontend-repo/dt-frontend-repo
           echo "Current directory:"
           pwd
+          echo "Ensuring 'extracted-package' exists:"
+          if [ ! -d "extracted-package" ]; then
+            echo "'extracted-package' directory is missing! Creating it now..."
+            mkdir extracted-package
+          else
+            echo "'extracted-package' directory exists."
+          fi
           echo "Listing files:"
           ls -la
           echo "Verifying extracted-package:"
           ls -la extracted-package
 
-      
       - name: Build Docker Image
         run: |
+          echo "Navigating to project directory:"
+          cd /home/runner/work/dt-frontend-repo/dt-frontend-repo
+          echo "Building Docker image..."
           docker build --build-arg ARTIFACT_VERSION=${{ env.NEW_VERSION_TAG }} \
           -t ${{ inputs.ecr-repo-name }}:${{ env.NEW_VERSION_TAG }} \
           -t ${{ inputs.ecr-repo-name }}:latest \
           .
+
   
       - name: Authenticate Docker with ECR
         run: |
