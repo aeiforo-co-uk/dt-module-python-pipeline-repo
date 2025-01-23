@@ -171,11 +171,11 @@ jobs:
             --domain-owner ${{ inputs.aws-domain-owner }}
           
           # Download the package as a .tgz file
-          npm pack react-app-build@1.0.4
+          npm pack react-app-build@1.0.5
           
           # Extract the contents of the .tgz file
           mkdir extracted-package
-          tar -xzf react-app-build-1.0.4.tgz -C extracted-package --strip-components=1
+          tar -xzf react-app-build-1.0.5.tgz -C extracted-package --strip-components=1
           
           # List the extracted contents for debugging
           ls -R extracted-package/
@@ -217,18 +217,11 @@ jobs:
           echo "NEW_VERSION_TAG=$NEW_VERSION_TAG" >> $GITHUB_ENV
           echo "NEW_VERSION_TAG=$NEW_VERSION_TAG"
   
-      - name: Download Artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: extracted-package
-          path: extracted-package
-  
       - name: Build Docker Image
         run: |
           docker build --build-arg ARTIFACT_VERSION=${{ env.NEW_VERSION_TAG }} \
           -t ${{ inputs.ecr-repo-name }}:${{ env.NEW_VERSION_TAG }} \
-          -t ${{ inputs.ecr-repo-name }}:latest \
-          .
+          -t ${{ inputs.ecr-repo-name }}:latest \ .
   
       - name: Authenticate Docker with ECR
         run: |
