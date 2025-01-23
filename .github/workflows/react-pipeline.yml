@@ -154,7 +154,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: react-app-build
-          path: .
+          path: build
           
       - name: Download and Unpack Published Package
         env:
