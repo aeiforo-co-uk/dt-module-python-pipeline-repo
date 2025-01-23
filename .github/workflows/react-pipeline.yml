@@ -117,7 +117,7 @@ jobs:
         run: |
           echo '{
             "name": "react-app-build",
-            "version": "1.0.3",
+            "version": "1.0.4",
             "description": "React App Build Artifact",
             "main": "index.js",
             "license": "MIT"
@@ -171,11 +171,11 @@ jobs:
             --domain-owner ${{ inputs.aws-domain-owner }}
           
           # Download the package as a .tgz file
-          npm pack react-app-build@1.0.3
+          npm pack react-app-build@1.0.4
           
           # Extract the contents of the .tgz file
           mkdir extracted-package
-          tar -xzf react-app-build-1.0.3.tgz -C extracted-package --strip-components=1
+          tar -xzf react-app-build-1.0.4.tgz -C extracted-package --strip-components=1
           
           # List the extracted contents for debugging
           ls -R extracted-package/
