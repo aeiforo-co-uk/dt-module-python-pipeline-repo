@@ -98,78 +98,79 @@ jobs:
     name: Build and Publish React App
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+    - name: Checkout Code
+      uses: actions/checkout@v3
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20'
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20'
 
-      - name: Install Dependencies
-        run: npm install
+    - name: Install Dependencies
+      run: npm install
 
-      - name: Automatically Increment Version
-        run: |
-           npm version ${{ inputs.version-type }}
-        env:
-           NODE_AUTH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+    - name: Automatically Increment Version
+      run: |
+        npm version ${{ inputs.version-type }}
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
 
-      - name: Commit and Push Version Update
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add package.json package-lock.json 
-          git commit -m "chore: bump version to $(node -p "require('./package.json').version")"
-          git push origin HEAD || echo "Nothing to push"
-        env:
-          GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }} 
+    - name: Commit and Push Version Update
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add package.json package-lock.json
+        git commit -m "chore: bump version to $(node -p 'require(\"./package.json\").version')" || echo "No changes to commit."
+        git push origin HEAD || echo "Nothing to push."
+      env:
+        GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
 
-      - name: Build React App
-        run: npm run build
+    - name: Build React App
+      run: npm run build
 
-      - name: Create package.json for Build
-        run: |
-          echo '{
-            "name": "react-app-build",
-            "version": "1.0.3",
-            "description": "React App Build Artifact",
-            "main": "index.js",
-            "license": "MIT"
-          }' > build/package.json
+    - name: Create package.json for Build
+      run: |
+        VERSION=$(node -p "require('./package.json').version")
+        echo '{
+          "name": "react-app-build",
+          "version": "'$VERSION'",
+          "description": "React App Build Artifact",
+          "main": "index.js",
+          "license": "MIT"
+        }' > build/package.json
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ inputs.aws-region }}
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ inputs.aws-region }}
 
-      - name: Login to AWS CodeArtifact
-        run: |
-          aws codeartifact login \
-            --tool npm \
-            --repository ${{ inputs.npm-repository }} \
-            --domain ${{ inputs.aws-domain }} \
-            --domain-owner ${{ inputs.aws-domain-owner }}
+    - name: Login to AWS CodeArtifact
+      run: |
+        aws codeartifact login \
+          --tool npm \
+          --repository ${{ inputs.npm-repository }} \
+          --domain ${{ inputs.aws-domain }} \
+          --domain-owner ${{ inputs.aws-domain-owner }}
 
-      - name: Debug .npmrc
-        run: cat ~/.npmrc
+    - name: Debug .npmrc
+      run: cat ~/.npmrc
 
-      - name: Publish Build to AWS CodeArtifact
-        working-directory: ./build
-        env:
-          NPM_REGISTRY_URL: "https://${{ inputs.aws-domain }}-${{ inputs.aws-domain-owner }}.d.codeartifact.${{ inputs.aws-region }}.amazonaws.com/npm/${{ inputs.npm-repository }}/"
-        run: |
-          npm set registry $NPM_REGISTRY_URL
-          npm publish
+    - name: Publish Build to AWS CodeArtifact
+      working-directory: ./build
+      env:
+        NPM_REGISTRY_URL: "https://${{ inputs.aws-domain }}-${{ inputs.aws-domain-owner }}.d.codeartifact.${{ inputs.aws-region }}.amazonaws.com/npm/${{ inputs.npm-repository }}/"
+      run: |
+        npm set registry $NPM_REGISTRY_URL
+        npm publish
 
-          
-      - name: Upload Build Artifact to GitHub
-        uses: actions/upload-artifact@v3
-        with:
-          name: react-app-build
-          path: build/
+    - name: Upload Build Artifact to GitHub
+      uses: actions/upload-artifact@v3
+      with:
+        name: react-app-build
+        path: build/
+
           
   #     - name: Download and Unpack Published Package
   #       env:
