@@ -95,8 +95,8 @@ jobs:
   #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
   #         SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
- build_and_publish_react_app:
-  name: Build, Publish, and Deploy React App
+ build_and_publish_artifact:
+  name: Build, Publish, and DeployArtifact
   runs-on: ubuntu-latest
   steps:
     - name: Checkout Code
