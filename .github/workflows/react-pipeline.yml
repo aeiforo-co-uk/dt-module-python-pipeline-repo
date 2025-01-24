@@ -191,36 +191,32 @@ jobs:
     name: Download and Extract Artifact
     runs-on: ubuntu-latest
     needs: build_and_publish_artifact
-
+    if: env.should_deploy == 'true'
+  
     steps:
       - name: Download Artifact
         uses: actions/download-artifact@v3
         with:
           name: react-app-build
           path: ./artifact
-
-      - name: List Downloaded Files
-        run: |
-          echo "Listing files in the artifact directory:"
-          ls -la ./artifact
-
+  
+      - name: Debug Artifact Directory
+        run: ls -la ./artifact
+  
       - name: Extract Artifact
         run: |
-          echo "Extracting .tgz file..."
           ARTIFACT_FILE=$(find ./artifact -name '*.tgz')
           if [ -z "$ARTIFACT_FILE" ]; then
             echo "No .tgz file found in artifact directory!"
             exit 1
           fi
-          echo "Found artifact: $ARTIFACT_FILE"
           mkdir -p extracted-artifact
           tar -xzf "$ARTIFACT_FILE" -C extracted-artifact
-
-      - name: List Extracted Files
-        run: |
-          echo "Listing files in the extracted artifact directory:"
-          ls -la extracted-artifact
   
+      - name: Debug Extracted Directory
+        run: ls -la extracted-artifact
+  
+    
 
   # docker:
   #   name: Docker Build and Deploy
