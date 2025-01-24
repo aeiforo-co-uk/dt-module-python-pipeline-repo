@@ -186,18 +186,13 @@ jobs:
           echo "Listing files in build directory before upload:"
           ls -la build
           pwd
-
-      - name: Prepare Artifact Directory
-        run: |
-          mkdir -p build-artifact
-          cp -r build Dockerfile public src package-lock.json package.json version.txt build-artifact/
           
       - name: Upload Build Artifact to GitHub
         if: env.should_deploy == 'true'
         uses: actions/upload-artifact@v3
         with:
           name: react-app-build
-          path: build/
+          path: .
 
           
   docker:
