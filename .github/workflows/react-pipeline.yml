@@ -114,7 +114,7 @@ jobs:
     - name: Check for Changes
       id: changes
       run: |
-        git fetch origin main
+        git fetch origin feature/demo
         if git diff --exit-code HEAD origin/feature/demo -- . > /dev/null; then
           echo "No changes detected. Skipping version bump and deployment."
           echo "should_deploy=false" >> $GITHUB_ENV
