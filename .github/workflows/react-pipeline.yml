@@ -198,26 +198,26 @@ build_and_publish_artifact:
         path: build/
 
           
-      - name: Download and Unpack Published Package
-        env:
-          NPM_REGISTRY_URL: "https://${{ inputs.aws-domain }}-${{ inputs.aws-domain-owner }}.d.codeartifact.${{ inputs.aws-region }}.amazonaws.com/npm/${{ inputs.npm-repository }}/"
-        run: |
-          # Configure npm registry to use CodeArtifact
-          npm set registry $NPM_REGISTRY_URL
+    - name: Download and Unpack Published Package
+      env:
+        NPM_REGISTRY_URL: "https://${{ inputs.aws-domain }}-${{ inputs.aws-domain-owner }}.d.codeartifact.${{ inputs.aws-region }}.amazonaws.com/npm/${{ inputs.npm-repository }}/"
+      run: |
+        # Configure npm registry to use CodeArtifact
+        npm set registry $NPM_REGISTRY_URL
           
-          # Authenticate with CodeArtifact
-          aws codeartifact login \
-            --tool npm \
-            --repository ${{ inputs.npm-repository }} \
-            --domain ${{ inputs.aws-domain }} \
-            --domain-owner ${{ inputs.aws-domain-owner }}
+        # Authenticate with CodeArtifact
+        aws codeartifact login \
+          --tool npm \
+          --repository ${{ inputs.npm-repository }} \
+          --domain ${{ inputs.aws-domain }} \
+          --domain-owner ${{ inputs.aws-domain-owner }}
           
-          # Download the package as a .tgz file
-          npm pack react-app-build@1.0.2
+        # Download the package as a .tgz file
+        npm pack react-app-build@1.0.2
           
-          # Extract the contents of the .tgz file
-          mkdir extracted-package
-          tar -xzf react-app-build-1.0.2.tgz -C extracted-package --strip-components=1
+        # Extract the contents of the .tgz file
+        mkdir extracted-package
+        tar -xzf react-app-build-1.0.2.tgz -C extracted-package --strip-components=1
           
 
   docker:
