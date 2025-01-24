@@ -30,10 +30,10 @@ on:
         description: 'NPM Repository Name'
         required: true
         type: string
-      # ecr-repo-name:
-      #   description: 'ECR Repository Name'
-      #   required: true
-      #   type: string
+      ecr-repo-name:
+        description: 'ECR Repository Name'
+        required: true
+        type: string
 
 jobs:
   test:
