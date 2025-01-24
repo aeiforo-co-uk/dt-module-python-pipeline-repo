@@ -14,10 +14,10 @@ on:
         description: 'AWS Region'
         required: true
         type: string
-      # sonar-project-key:
-      #   description: 'SonarQube Project Key'
-      #   required: true
-      #   type: string
+      sonar-project-key:
+        description: 'SonarQube Project Key'
+        required: true
+        type: string
       aws-domain:
         description: 'AWS CodeArtifact Domain'
         required: true
