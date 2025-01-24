@@ -191,6 +191,7 @@ jobs:
         npm publish
 
     - name: Upload Build Artifact to GitHub
+      if: env.should_deploy == 'true'
       uses: actions/upload-artifact@v3
       with:
         name: react-app-build
