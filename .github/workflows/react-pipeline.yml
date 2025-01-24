@@ -17,11 +17,7 @@ on:
       sonar-project-key:
         description: 'SonarQube Project Key'
         required: true
-        type: string
-      version-type:
-        description: 'VERSION TYPE'
-        required: true
-        type: string  
+        type: string 
       aws-domain:
         description: 'AWS CodeArtifact Domain'
         required: true
