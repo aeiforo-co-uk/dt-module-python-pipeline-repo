@@ -192,12 +192,6 @@ jobs:
         with:
           name: react-app-build
           path: build/
-      
-      - name: Verify Artifact Upload
-        if: env.should_deploy == 'true'
-        run: |
-          echo "Verifying that artifact has been uploaded:"
-          ls -la $GITHUB_WORKSPACE/.github/workflows/artifacts/
 
           
   docker:
