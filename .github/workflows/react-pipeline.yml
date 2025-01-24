@@ -99,44 +99,57 @@ jobs:
   #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
   #         SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
- build-artifact:
-  name: Build and Publish React App
+ build_and_publish_react_app:
+  name: Build, Publish, and Deploy React App
   runs-on: ubuntu-latest
   steps:
     - name: Checkout Code
       uses: actions/checkout@v3
 
-    - name: Set up Node.js
+    - name: Set Up Node.js
       uses: actions/setup-node@v3
       with:
         node-version: '20'
 
-    - name: Configure Git Identity
+    - name: Check for Changes
+      id: changes
       run: |
-        git config --global user.name "github-actions[bot]"
-        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        git fetch origin main
+        if git diff --exit-code HEAD origin/feature/demo -- . > /dev/null; then
+          echo "No changes detected. Skipping version bump and deployment."
+          echo "should_deploy=false" >> $GITHUB_ENV
+        else
+          echo "Changes detected. Proceeding with version bump and deployment."
+          echo "should_deploy=true" >> $GITHUB_ENV
+
+    - name: Set Deploy Output
+      id: set_deploy_output
+      run: echo "::set-output name=should_deploy::${{ env.should_deploy }}"
+
+    - name: Increment Version (if needed)
+      if: env.should_deploy == 'true'
+      run: |
+        # Increment version number
+        VERSION=$(cat version.txt)
+        echo "Current Version: $VERSION"
+        
+        # Increment patch version
+        NEW_VERSION=$(echo $VERSION | awk -F. -v OFS=. '{$NF++;print}')
+        echo "New Version: $NEW_VERSION"
+        
+        # Save the incremented version
+        echo $NEW_VERSION > version.txt
+
+        # Commit the version change
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
+        git remote set-url origin https://${{ secrets.MY_GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        git add version.txt
+        git commit -m "chore: bump version to $NEW_VERSION"
+        git push
 
     - name: Install Dependencies
       run: npm install
-
-    - name: Read and Increment Version from version.txt
-      run: |
-        VERSION=$(cat version.txt)
-        echo "Current Version: $VERSION"
-        # Increment the version here (e.g., using a patch version bump)
-        NEW_VERSION=$(echo $VERSION | awk -F. -v OFS=. '{$NF++;print}')
-        echo "New Version: $NEW_VERSION"
-        echo $NEW_VERSION > version.txt
-
-    - name: Commit and Push Version Update
-      run: |
-        git add version.txt
-        git commit -m "chore: bump version to $(cat version.txt)" || echo "No changes to commit."
-        git push origin HEAD || echo "Nothing to push."
-      env:
-        GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
 
     - name: Build React App
       run: npm run build
@@ -153,13 +166,15 @@ jobs:
         }' > build/package.json
 
     - name: Configure AWS Credentials
+      if: env.should_deploy == 'true'
       uses: aws-actions/configure-aws-credentials@v2
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ inputs.aws-region }}
+        aws-region: us-east-1
 
     - name: Login to AWS CodeArtifact
+      if: env.should_deploy == 'true'
       run: |
         aws codeartifact login \
           --tool npm \
@@ -167,15 +182,11 @@ jobs:
           --domain ${{ inputs.aws-domain }} \
           --domain-owner ${{ inputs.aws-domain-owner }}
 
-    - name: Debug .npmrc
-      run: cat ~/.npmrc
-
     - name: Publish Build to AWS CodeArtifact
+      if: env.should_deploy == 'true'
       working-directory: ./build
-      env:
-        NPM_REGISTRY_URL: "https://${{ inputs.aws-domain }}-${{ inputs.aws-domain-owner }}.d.codeartifact.${{ inputs.aws-region }}.amazonaws.com/npm/${{ inputs.npm-repository }}/"
       run: |
-        npm set registry $NPM_REGISTRY_URL
+        npm set registry "https://${{ inputs.aws-domain }}-${{ inputs.aws-domain-owner }}.d.codeartifact.${{ inputs.aws-region }}.amazonaws.com/npm/${{ inputs.npm-repository }}/"
         npm publish
 
     - name: Upload Build Artifact to GitHub
@@ -183,6 +194,7 @@ jobs:
       with:
         name: react-app-build
         path: build/
+
 
 
           
