@@ -185,6 +185,7 @@ jobs:
         run: |
           echo "Listing files in build directory before upload:"
           ls -la build
+          pwd
       
       - name: Upload Build Artifact to GitHub
         if: env.should_deploy == 'true'
