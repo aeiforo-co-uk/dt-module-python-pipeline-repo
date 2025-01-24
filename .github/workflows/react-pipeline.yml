@@ -18,6 +18,10 @@ on:
         description: 'SonarQube Project Key'
         required: true
         type: string
+      version-type:
+        description: 'VERSION TYPE'
+        required: true
+        type: string  
       aws-domain:
         description: 'AWS CodeArtifact Domain'
         required: true
@@ -34,6 +38,7 @@ on:
         description: 'ECR Repository Name'
         required: true
         type: string
+        
 
 jobs:
   # test:
