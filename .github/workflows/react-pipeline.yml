@@ -147,12 +147,15 @@ jobs:
         git push
 
     - name: Install Dependencies
+      if: env.should_deploy == 'true'
       run: npm install
 
     - name: Build React App
+      if: env.should_deploy == 'true'
       run: npm run build
 
     - name: Create package.json for Build
+      if: env.should_deploy == 'true'
       run: |
         VERSION=$(cat version.txt)
         echo '{
