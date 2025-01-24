@@ -121,6 +121,8 @@ jobs:
         else
           echo "Changes detected. Proceeding with version bump and deployment."
           echo "should_deploy=true" >> $GITHUB_ENV
+        fi
+
 
     - name: Set Deploy Output
       id: set_deploy_output
