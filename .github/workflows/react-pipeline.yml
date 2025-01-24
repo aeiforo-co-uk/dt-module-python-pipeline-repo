@@ -14,10 +14,10 @@ on:
         description: 'AWS Region'
         required: true
         type: string
-      sonar-project-key:
-        description: 'SonarQube Project Key'
-        required: true
-        type: string
+      # sonar-project-key:
+      #   description: 'SonarQube Project Key'
+      #   required: true
+      #   type: string
       aws-domain:
         description: 'AWS CodeArtifact Domain'
         required: true
@@ -30,10 +30,10 @@ on:
         description: 'NPM Repository Name'
         required: true
         type: string
-      ecr-repo-name:
-        description: 'ECR Repository Name'
-        required: true
-        type: string
+      # ecr-repo-name:
+      #   description: 'ECR Repository Name'
+      #   required: true
+      #   type: string
 
 jobs:
   test:
@@ -97,7 +97,6 @@ jobs:
   build-artifact:
     name: Build and Publish React App
     runs-on: ubuntu-latest
-    needs: sonarqube
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
