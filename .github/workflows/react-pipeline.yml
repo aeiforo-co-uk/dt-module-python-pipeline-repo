@@ -224,24 +224,43 @@ jobs:
           echo "NEW_VERSION_TAG=$NEW_VERSION_TAG" >> $GITHUB_ENV
           echo "NEW_VERSION_TAG=$NEW_VERSION_TAG"
   
+      name: Build and Prepare Context
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  prepare-build-context:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
       - name: Prepare Build Context
         run: |
           echo "Navigating to project directory:"
           cd ${{ github.workspace }}
           echo "Current directory:"
           pwd
-          echo "Ensuring 'extracted-package' exists:"
-          if [ ! -d "extracted-package" ]; then
-            echo "'extracted-package' directory is missing! Creating it now..."
-            mkdir extracted-package
+          echo "Removing existing 'extracted-package' if it exists:"
+          if [ -d "extracted-package" ]; then
+            echo "'extracted-package' directory exists. Removing it..."
+            rm -rf extracted-package
           else
-            echo "'extracted-package' directory exists."
+            echo "'extracted-package' directory does not exist."
           fi
-          echo "Copying everything to 'extracted-package' directory, excluding itself:"
+          echo "Creating 'extracted-package' directory:"
+          mkdir extracted-package
+          echo "Copying everything to 'extracted-package' directory:"
           find . -mindepth 1 -maxdepth 1 ! -name 'extracted-package' -exec cp -r {} extracted-package/ \;
           echo "Listing files in the project directory:"
           ls -la
-          echo "Verifying extracted-package contents:"
+          echo "Verifying 'extracted-package' contents:"
           ls -la extracted-package
       
 
