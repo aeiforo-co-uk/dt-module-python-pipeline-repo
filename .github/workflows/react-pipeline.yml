@@ -224,22 +224,6 @@ jobs:
           echo "NEW_VERSION_TAG=$NEW_VERSION_TAG" >> $GITHUB_ENV
           echo "NEW_VERSION_TAG=$NEW_VERSION_TAG"
   
-      name: Build and Prepare Context
-
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
-
-jobs:
-  prepare-build-context:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
 
       - name: Prepare Build Context
         run: |
